@@ -58,9 +58,7 @@ interface ReportFilterDialogProps {
 
 const PAYMENT_STATUSES = ['PAID', 'PENDING', 'REFUNDED'];
 const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
-const SALES_CHANNELS = ['Online', 'In-Store', 'Wholesale', 'Direct'];
 const STOCK_STATUSES = ['IN_STOCK', 'LOW_STOCK', 'OUT_OF_STOCK'];
-const LOCATIONS = ['Warehouse A', 'Warehouse B', 'Store Front', 'Distribution Center'];
 const EXPENSE_CATEGORIES = ['Office Supplies', 'Travel', 'Marketing', 'Software', 'Utilities', 'Salaries'];
 const DEPARTMENTS = ['Sales', 'Marketing', 'Engineering', 'HR', 'Finance', 'Operations'];
 const EXPENSE_STATUSES = ['PENDING_APPROVAL', 'APPROVED', 'REJECTED'];
@@ -246,24 +244,7 @@ export function ReportFilterDialog({
         </div>
       </div>
 
-      {/* Sales Channel */}
-      <div className="space-y-2">
-        <Label>Sales Channel</Label>
-        <div className="flex flex-wrap gap-2">
-          {SALES_CHANNELS.map(channel => (
-            <div key={channel} className="flex items-center space-x-2">
-              <Checkbox
-                id={`channel-${channel}`}
-                checked={filters.salesChannel?.includes(channel)}
-                onCheckedChange={() => toggleArrayFilter('salesChannel', channel)}
-              />
-              <label htmlFor={`channel-${channel}`} className="text-sm cursor-pointer">
-                {channel}
-              </label>
-            </div>
-          ))}
-        </div>
-      </div>
+
 
       {/* Value Range */}
       <div className="space-y-2">
@@ -319,43 +300,6 @@ export function ReportFilterDialog({
           </div>
         </div>
 
-        {/* Locations */}
-        <div className="space-y-2">
-          <Label>Locations</Label>
-          <div className="space-y-1">
-            {LOCATIONS.map(location => (
-              <div key={location} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`loc-${location}`}
-                  checked={filters.locations?.includes(location)}
-                  onCheckedChange={() => toggleArrayFilter('locations', location)}
-                />
-                <label htmlFor={`loc-${location}`} className="text-sm cursor-pointer">
-                  {location}
-                </label>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Value Range */}
-      <div className="space-y-2">
-        <Label>Stock Value Range</Label>
-        <div className="flex gap-2">
-          <Input
-            type="number"
-            placeholder="Min"
-            value={filters.minValue ?? ''}
-            onChange={(e) => updateFilter('minValue', e.target.value ? Number(e.target.value) : undefined)}
-          />
-          <Input
-            type="number"
-            placeholder="Max"
-            value={filters.maxValue ?? ''}
-            onChange={(e) => updateFilter('maxValue', e.target.value ? Number(e.target.value) : undefined)}
-          />
-        </div>
       </div>
     </div>
   );
@@ -382,25 +326,6 @@ export function ReportFilterDialog({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        {/* Departments */}
-        <div className="space-y-2">
-          <Label>Departments</Label>
-          <div className="space-y-1">
-            {DEPARTMENTS.map(dept => (
-              <div key={dept} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`dept-${dept}`}
-                  checked={filters.departments?.includes(dept)}
-                  onCheckedChange={() => toggleArrayFilter('departments', dept)}
-                />
-                <label htmlFor={`dept-${dept}`} className="text-sm cursor-pointer">
-                  {dept}
-                </label>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Expense Status */}
         <div className="space-y-2">
           <Label>Approval Status</Label>

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Trash2, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, Trash2, Check, ChevronsUpDown, X, History } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -92,19 +92,88 @@ export function AddSaleDialog({ open, onOpenChange }: AddSaleDialogProps) {
     country: 'United States',
   });
 
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [warningData, setWarningData] = useState<{ score: number; matches: string[] } | null>(null);
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const res = await fetch('http://localhost:5000/api/customers', {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        const data = await res.json();
+        setCustomers(data);
+      } catch (err) {
+        console.error('Error fetching customers:', err);
+      }
+    };
+    fetchCustomers();
+  }, []);
+
   // Filter customers by search query (name or phone)
   const filteredCustomers = useMemo(() => {
     if (!customerSearchQuery) return customers;
     const query = customerSearchQuery.toLowerCase();
     return customers.filter(
       (customer) =>
-        customer.companyName.toLowerCase().includes(query) ||
-        customer.contactName.toLowerCase().includes(query) ||
+        (customer.companyName || '').toLowerCase().includes(query) ||
+        (customer.name || '').toLowerCase().includes(query) ||
+        (customer.mobile && customer.mobile.includes(query)) ||
         (customer.phone && customer.phone.includes(query))
     );
-  }, [customerSearchQuery]);
+  }, [customerSearchQuery, customers]);
 
   const selectedCustomer = customers.find((c) => c.id === customerId);
+
+  // Check for flagged status or similarity
+  useEffect(() => {
+    const checkFlagged = async () => {
+      if (customerType === 'existing' && selectedCustomer) {
+        if (selectedCustomer.status === 'FLAGGED') {
+          setWarningData({ score: 100, matches: ['This customer is explicitly flagged as risky'] });
+        } else {
+          setWarningData(null);
+        }
+        return;
+      }
+
+      if (customerType === 'manual' && (manualCustomer.phone || manualCustomer.contactName)) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) return;
+
+          const res = await fetch('http://localhost:5000/api/customers/check-flagged', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({
+              name: manualCustomer.contactName,
+              mobile: manualCustomer.phone,
+              phone: manualCustomer.phone,
+              address: `${shippingAddress.street} ${shippingAddress.city}`
+            })
+          });
+          const data = await res.json();
+          if (data.warningScore > 0) {
+            setWarningData({ score: data.warningScore, matches: data.matches });
+          } else {
+            setWarningData(null);
+          }
+        } catch (err) {
+          console.error('Check flagged error:', err);
+        }
+      } else {
+        setWarningData(null);
+      }
+    };
+
+    const timeoutId = setTimeout(checkFlagged, 500);
+    return () => clearTimeout(timeoutId);
+  }, [customerType, selectedCustomer, manualCustomer, shippingAddress]);
 
   const addProduct = () => {
     setOrderItems([...orderItems, { productId: '', productName: '', quantity: 1, unitPrice: 0, total: 0 }]);
@@ -325,6 +394,35 @@ export function AddSaleDialog({ open, onOpenChange }: AddSaleDialogProps) {
               </div>
             )}
           </div>
+
+          {/* Warning Score for Flagged Customers */}
+          {warningData && (
+            <div className={cn(
+              "p-4 rounded-lg border flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 mb-6",
+              warningData.score >= 80 ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-orange-500/10 border-orange-500/20 text-orange-600"
+            )}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-sm">
+                  <div className={cn(
+                    "p-1 rounded flex items-center justify-center",
+                    warningData.score >= 80 ? "bg-destructive text-white" : "bg-orange-500 text-white"
+                  )}>
+                    <X className="w-3 h-3" />
+                  </div>
+                  <span>Risk Warning: Similarity Score {warningData.score}%</span>
+                </div>
+                <Badge variant={warningData.score >= 80 ? "destructive" : "secondary"} className={cn(warningData.score < 80 && "bg-orange-500 text-white")}>
+                  {warningData.score >= 80 ? "High Risk" : "Potential Match"}
+                </Badge>
+              </div>
+              <div className="text-sm opacity-90">
+                <p>Matches found with flagged accounts:</p>
+                <ul className="list-disc list-inside mt-1">
+                  {warningData.matches.map((m, i) => <li key={i}>{m}</li>)}
+                </ul>
+              </div>
+            </div>
+          )}
 
           {/* Products */}
           <div className="space-y-4">

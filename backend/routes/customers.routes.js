@@ -265,4 +265,71 @@ router.delete('/:id', authenticateUser, async (req, res) => {
     }
 });
 
+// POST /api/customers/check-flagged - Check for similarity with flagged customers
+router.post('/check-flagged', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        if (!orgId) return res.status(403).json({ error: 'No organization found' });
+
+        const { name, mobile, phone, address } = req.body;
+        
+        // Fetch all flagged customers for this org
+        const { data: flaggedCustomers, error } = await supabaseAdmin
+            .from('customers')
+            .select('*')
+            .eq('organization_id', orgId)
+            .eq('status', 'FLAGGED');
+
+        if (error) throw error;
+
+        let warningScore = 0;
+        let matches = [];
+
+        flaggedCustomers.forEach(c => {
+            let score = 0;
+            let matchReason = [];
+
+            // Phone/Mobile match (High weight)
+            if (mobile && (c.mobile === mobile || c.phone === mobile)) {
+                score += 80;
+                matchReason.push('Phone number match');
+            }
+            if (phone && (c.mobile === phone || c.phone === phone)) {
+                score += 80;
+                matchReason.push('Phone number match');
+            }
+
+            // Name match (Medium weight)
+            if (name && c.name && name.toLowerCase().includes(c.name.toLowerCase())) {
+                score += 40;
+                matchReason.push('Name similarity');
+            } else if (name && c.company_name && name.toLowerCase().includes(c.company_name.toLowerCase())) {
+                score += 40;
+                matchReason.push('Company name similarity');
+            }
+
+            // Address match (Medium weight)
+            const fullAddress = `${c.billing_address_line1} ${c.billing_address_line2} ${c.city}`.toLowerCase();
+            if (address && fullAddress.includes(address.toLowerCase())) {
+                score += 30;
+                matchReason.push('Address similarity');
+            }
+
+            if (score > warningScore) {
+                warningScore = score;
+                matches = matchReason;
+            }
+        });
+
+        res.json({ 
+            warningScore: Math.min(warningScore, 100), 
+            matches: [...new Set(matches)] 
+        });
+
+    } catch (error) {
+        console.error('Check flagged error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

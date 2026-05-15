@@ -146,10 +146,25 @@ router.get('/inventory', authenticateUser, async (req, res) => {
         const orgId = await getOrgId(req.user.id);
         if (!orgId) return res.status(403).json({ error: 'No organization found' });
 
-        const { data: products, error } = await supabaseAdmin
+        const { categories, stockStatus } = req.query;
+        let query = supabaseAdmin
             .from('products')
             .select('*')
             .eq('organization_id', orgId);
+
+        const parseArray = (val) => {
+            if (!val) return null;
+            if (Array.isArray(val)) return val;
+            return val.split(',');
+        };
+
+        const categoryList = parseArray(categories);
+        const statusList = parseArray(stockStatus);
+
+        if (categoryList && categoryList.length > 0) query = query.in('category', categoryList);
+        if (statusList && statusList.length > 0) query = query.in('status', statusList);
+
+        const { data: products, error } = await query;
 
         if (error) throw error;
 
@@ -191,15 +206,30 @@ router.get('/expenses', authenticateUser, async (req, res) => {
         const orgId = await getOrgId(req.user.id);
         if (!orgId) return res.status(403).json({ error: 'No organization found' });
 
-        const { from, to } = req.query;
+        const { from, to, expenseCategories, expenseStatus, minValue, maxValue } = req.query;
         let query = supabaseAdmin
             .from('expenses')
             .select('*')
-            .eq('organization_id', orgId)
-            .neq('status', 'REJECTED');
+            .eq('organization_id', orgId);
 
         if (from) query = query.gte('incurred_date', startOfDay(new Date(from)).toISOString());
         if (to) query = query.lte('incurred_date', endOfDay(new Date(to)).toISOString());
+        
+        const parseArray = (val) => {
+            if (!val) return null;
+            if (Array.isArray(val)) return val;
+            return val.split(',');
+        };
+
+        const catList = parseArray(expenseCategories);
+        const statList = parseArray(expenseStatus);
+
+        if (catList && catList.length > 0) query = query.in('category', catList);
+        if (statList && statList.length > 0) query = query.in('status', statList);
+        else query = query.neq('status', 'REJECTED'); // Default to hiding rejected if no status filter
+
+        if (minValue) query = query.gte('amount', minValue);
+        if (maxValue) query = query.lte('amount', maxValue);
 
         const { data: expenses, error } = await query;
         if (error) throw error;

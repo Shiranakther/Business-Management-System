@@ -30,6 +30,7 @@ interface CustomerDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
   onEdit?: (customer: Customer) => void;
   onDelete?: (customer: Customer) => void;
+  onStatusChange?: (customer: Customer, newStatus: string) => void;
   stats?: {
     totalOrders: number;
     ltv: number;
@@ -41,9 +42,10 @@ const statusColors: Record<string, string> = {
   ACTIVE: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
   INACTIVE: 'bg-muted text-muted-foreground border-muted',
   SUSPENDED: 'bg-destructive/10 text-destructive border-destructive/20',
+  FLAGGED: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
 };
 
-export function CustomerDetailsDialog({ customer, open, onOpenChange, onEdit, onDelete, stats }: CustomerDetailsDialogProps) {
+export function CustomerDetailsDialog({ customer, open, onOpenChange, onEdit, onDelete, onStatusChange, stats }: CustomerDetailsDialogProps) {
   if (!customer) return null;
 
   const formatCurrency = (value: number) => {
@@ -109,6 +111,16 @@ export function CustomerDetailsDialog({ customer, open, onOpenChange, onEdit, on
               >
                 <Edit className="w-4 h-4" />
                 Edit Profile
+              </Button>
+              
+              <Button 
+                variant={customer.status === 'FLAGGED' ? 'secondary' : 'outline'} 
+                size="sm" 
+                className={`gap-2 mt-8 ${customer.status === 'FLAGGED' ? 'text-orange-600 border-orange-200 bg-orange-50' : 'text-orange-600 hover:bg-orange-50 hover:text-orange-700'}`}
+                onClick={() => onStatusChange?.(customer, customer.status === 'FLAGGED' ? 'ACTIVE' : 'FLAGGED')}
+              >
+                <BadgeCheck className="w-4 h-4" />
+                {customer.status === 'FLAGGED' ? 'Unflag Customer' : 'Flag as Risky'}
               </Button>
           </div>
         </div>

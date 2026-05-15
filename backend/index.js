@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5001;
 
 // Middleware
 app.use(cors());

@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import AuthLayout from "@/layouts/AuthLayout";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
+import UpdatePasswordPage from "@/pages/auth/UpdatePasswordPage";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import BusinessSetup from "@/pages/business/BusinessSetup";
 import Dashboard from "./pages/Dashboard";
@@ -16,7 +17,7 @@ import Orders from "./pages/Orders";
 import Customers from "./pages/Customers";
 import Suppliers from "./pages/Suppliers";
 import Finance from "./pages/Finance";
-// import HR from "./pages/HR";
+import HR from "./pages/HR";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
@@ -39,6 +40,7 @@ const App = () => (
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
+            <Route path="/update-password" element={<UpdatePasswordPage />} />
             <Route path="/setup-business" element={<BusinessSetup />} />
             <Route element={<AppLayout />}>
               <Route path="/" element={<Dashboard />} />
@@ -48,13 +50,13 @@ const App = () => (
               <Route path="/customers" element={<Customers />} />
               <Route path="/suppliers" element={<Suppliers />} />
               <Route path="/finance" element={<Finance />} />
-              {/* <Route path="/hr" element={<HR />} /> */}
+              <Route path="/hr" element={<HR />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/profile" element={<Profile />} />
             </Route>
           </Route>
-          
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

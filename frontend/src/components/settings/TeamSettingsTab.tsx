@@ -56,27 +56,19 @@ export function TeamSettingsTab() {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          user_roles (
-            role_id,
-            roles (
-              id,
-              name
-            )
-          )
-        `);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
 
-      if (error) throw error;
-
-      const formattedUsers = data.map((user: any) => ({
-        ...user,
-        roles: user.user_roles.map((ur: any) => ur.roles),
-      }));
-
-      setUsers(formattedUsers);
+      const response = await fetch('http://localhost:5000/api/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to fetch team members');
+      
+      const data = await response.json();
+      setUsers(data);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Failed to load team members');

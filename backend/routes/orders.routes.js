@@ -34,7 +34,7 @@ router.get('/', authenticateUser, async (req, res) => {
                     quantity,
                     unit_price,
                     total_price,
-                    products (name)
+                    products (name, cost_price)
                 ),
                 customers (
                     id,
@@ -74,6 +74,7 @@ router.get('/', authenticateUser, async (req, res) => {
                 name: item.products?.name || 'Unknown Item',
                 quantity: item.quantity,
                 unitPrice: item.unit_price,
+                costPrice: item.products?.cost_price || 0,
                 total: item.total_price
             }))
         }));

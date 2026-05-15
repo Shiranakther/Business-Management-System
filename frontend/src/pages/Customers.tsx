@@ -24,6 +24,7 @@ const statusColors: Record<string, string> = {
   ACTIVE: 'bg-success/10 text-success border-success/20',
   INACTIVE: 'bg-muted text-muted-foreground border-muted',
   SUSPENDED: 'bg-destructive/10 text-destructive border-destructive/20',
+  FLAGGED: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
 };
 
 function formatCurrency(value: number) {
@@ -43,7 +44,7 @@ export default function Customers() {
   
   // Filters
   const [typeFilter, setTypeFilter] = useState<'ALL' | 'B2B' | 'B2C'>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'FLAGGED'>('ALL');
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -95,6 +96,31 @@ export default function Customers() {
         .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
         
     return { totalOrders, ltv, outstanding };
+  };
+
+  const handleStatusChange = async (customer: Customer, newStatus: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch(`http://localhost:5000/api/customers/${customer.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ ...customer, status: newStatus })
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+
+      toast.success(newStatus === 'FLAGGED' ? 'Customer flagged' : 'Customer unflagged');
+      setSelectedCustomer(prev => prev ? { ...prev, status: newStatus } : null);
+      fetchData();
+    } catch (error) {
+      console.error('Update status error:', error);
+      toast.error('Failed to update status');
+    }
   };
 
   const handleDeleteCustomer = async (customer: Customer) => {
@@ -270,6 +296,7 @@ export default function Customers() {
             setShowAddDialog(true);
         }}
         onDelete={canDelete('customers') ? handleDeleteCustomer : undefined}
+        onStatusChange={handleStatusChange}
         stats={selectedCustomer ? getCustomerStats(selectedCustomer.id) : undefined}
       />
 
@@ -353,6 +380,7 @@ export default function Customers() {
                         <SelectItem value="ACTIVE">Active</SelectItem>
                         <SelectItem value="INACTIVE">Inactive</SelectItem>
                         <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                        <SelectItem value="FLAGGED">Flagged (High Risk)</SelectItem>
                     </SelectContent>
                 </Select>
 

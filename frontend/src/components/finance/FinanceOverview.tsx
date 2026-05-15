@@ -126,7 +126,18 @@ export function FinanceOverview() {
   const summaryMetrics = useMemo(() => {
       const revenue = filteredData.orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
       const expenses = filteredData.expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-      const profit = revenue - expenses;
+      
+      const grossProfit = filteredData.orders.reduce((sum, o) => {
+          const orderGross = (o.items || []).reduce((itemSum: number, item: any) => {
+              const unitPrice = Number(item.unitPrice) || 0;
+              const costPrice = Number(item.costPrice) || 0;
+              const qty = Number(item.quantity) || 0;
+              return itemSum + ((unitPrice - costPrice) * qty);
+          }, 0);
+          return sum + orderGross;
+      }, 0);
+
+      const profit = grossProfit - expenses;
       const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
 
       // Calculate Previous Period for "Change"

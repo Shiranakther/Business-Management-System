@@ -111,6 +111,9 @@ export default function ProtectedRoute() {
         if (event === 'SIGNED_OUT') {
             setCurrentUser(null);
         }
+        if (event === 'PASSWORD_RECOVERY') {
+            window.location.href = '/update-password';
+        }
     });
 
     return () => {
