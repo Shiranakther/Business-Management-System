@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '@/lib/api';
 import type { InventoryItem } from '@/types';
 
 const stockUpdateSchema = z.object({
@@ -87,7 +88,7 @@ export function StockUpdateDialog({ open, onOpenChange, preselectedItemId, items
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No session');
 
-      const response = await fetch('http://localhost:5000/api/inventory/stock-update', {
+      const response = await fetch(`${API_BASE_URL}/api/inventory/stock-update`, {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',

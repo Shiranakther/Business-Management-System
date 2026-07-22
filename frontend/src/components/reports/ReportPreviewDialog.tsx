@@ -26,20 +26,6 @@ export function ReportPreviewDialog({ open, onOpenChange, template, data }: Repo
     // Approach: Open new window
     const printWindow = window.open('', '_blank');
     if (printWindow && contentRef.current) {
-        // Get all stylesheets
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const styles = Array.from(document.styleSheets)
-          .map(styleSheet => {
-            try {
-              return Array.from(styleSheet.cssRules)
-                .map(rule => rule.cssText)
-                .join('');
-            } catch (e) {
-              return '';
-            }
-          })
-          .join('');
-
         // Also get Tailwind styles if injected
         // For Vite + Tailwind, styles might be in <style> tags
         const styleTags = Array.from(document.querySelectorAll('style')).map(s => s.outerHTML).join('');

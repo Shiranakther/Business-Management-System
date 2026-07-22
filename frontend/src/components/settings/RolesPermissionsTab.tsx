@@ -41,7 +41,6 @@ import {
   ClipboardList,
   FileText,
   Settings,
-  RotateCcw,
   Check,
   X,
   Loader2
@@ -50,6 +49,7 @@ import type { PermissionModule, PermissionAction, Role } from '@/types/permissio
 import { defaultModulePermissions } from '@/types/permissions';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { API_BASE_URL } from '@/lib/api';
 import { usePermissionsStore } from '@/stores/permissionsStore';
 
 const moduleConfig: { module: PermissionModule; label: string; icon: React.ElementType }[] = [
@@ -96,7 +96,7 @@ export function RolesPermissionsTab() {
              const token = session?.access_token;
              if (!token) return;
 
-             const response = await fetch('http://localhost:5000/api/roles', {
+             const response = await fetch(`${API_BASE_URL}/api/roles`, {
                  headers: {
                      'Authorization': `Bearer ${token}`
                  }
@@ -157,7 +157,7 @@ export function RolesPermissionsTab() {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
 
-        const response = await fetch(`http://localhost:5000/api/roles/${selectedRole.id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/roles/${selectedRole.id}`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -198,7 +198,7 @@ export function RolesPermissionsTab() {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
         
-        const response = await fetch('http://localhost:5000/api/roles', {
+        const response = await fetch(`${API_BASE_URL}/api/roles`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -237,7 +237,7 @@ export function RolesPermissionsTab() {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
 
-        const response = await fetch(`http://localhost:5000/api/roles/${roleId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/roles/${roleId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -263,7 +263,7 @@ export function RolesPermissionsTab() {
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
 
-        const response = await fetch(`http://localhost:5000/api/roles/${selectedRole.id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/roles/${selectedRole.id}`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,

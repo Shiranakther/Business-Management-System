@@ -10,6 +10,7 @@ import { SupplierDetailsDialog } from '@/components/dialogs/SupplierDetailsDialo
 import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '@/lib/api';
 import {
     Select,
     SelectContent,
@@ -42,7 +43,7 @@ export default function Suppliers() {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) return;
           
-          const res = await fetch('http://localhost:5000/api/suppliers', {
+          const res = await fetch(`${API_BASE_URL}/api/suppliers`, {
               headers: { 'Authorization': `Bearer ${session.access_token}` }
           });
           
@@ -73,7 +74,7 @@ export default function Suppliers() {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) return;
 
-          const res = await fetch(`http://localhost:5000/api/suppliers/${id}/status`, {
+          const res = await fetch(`${API_BASE_URL}/api/suppliers/${id}/status`, {
               method: 'PATCH',
               headers: { 
                   'Authorization': `Bearer ${session.access_token}`,

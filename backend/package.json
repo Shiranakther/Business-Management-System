@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "build": "echo done"
   },
   "keywords": [],
   "author": "",
@@ -19,8 +20,10 @@
     "express": "^5.2.1",
     "helmet": "^8.1.0",
     "morgan": "^1.10.1",
-    "multer": "^2.0.2",
-    "nodemon": "^3.1.11",
-    "supabase-js": "^0.0.1-security"
+    "multer": "^2.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
   }
 }
+

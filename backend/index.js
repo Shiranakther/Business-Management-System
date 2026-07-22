@@ -8,7 +8,6 @@ import { createClient } from '@supabase/supabase-js';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 5001;
 
 // Middleware
 app.use(cors());
@@ -63,6 +62,11 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
+// Export app for Vercel serverless function
+export default app;
+
+// Start server only when running directly (local development)
+const port = process.env.PORT || 5001;
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });

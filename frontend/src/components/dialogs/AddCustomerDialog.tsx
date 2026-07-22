@@ -23,6 +23,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { API_BASE_URL } from '@/lib/api';
 
 // Base schema for shared fields
 const baseSchema = z.object({
@@ -223,8 +224,8 @@ export function AddCustomerDialog({ open, onOpenChange, onSuccess, customer }: A
       console.log('Submitting customer data:', { isEdit, id: customerId, data });
 
       const url = isEdit 
-        ? `http://localhost:5000/api/customers/${customerId}`
-        : 'http://localhost:5000/api/customers';
+        ? `${API_BASE_URL}/api/customers/${customerId}`
+        : `${API_BASE_URL}/api/customers`;
       
       const response = await fetch(url, {
           method: isEdit ? 'PUT' : 'POST',

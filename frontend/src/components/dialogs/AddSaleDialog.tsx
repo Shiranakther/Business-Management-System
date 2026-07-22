@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Plus, Trash2, Check, ChevronsUpDown, X, History } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Plus, Trash2, Check, ChevronsUpDown, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,9 +31,11 @@ import {
 } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
-import { customers, inventoryItems } from '@/data/mockData';
+import { inventoryItems } from '@/data/mockData';
 import { cn } from '@/lib/utils';
-
+import { API_BASE_URL } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
+import { Badge } from '@/components/ui/badge';
 interface OrderItemForm {
   productId: string;
   productName: string;
@@ -100,7 +102,7 @@ export function AddSaleDialog({ open, onOpenChange }: AddSaleDialogProps) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
-        const res = await fetch('http://localhost:5000/api/customers', {
+        const res = await fetch(`${API_BASE_URL}/api/customers`, {
           headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
         const data = await res.json();
@@ -144,7 +146,7 @@ export function AddSaleDialog({ open, onOpenChange }: AddSaleDialogProps) {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) return;
 
-          const res = await fetch('http://localhost:5000/api/customers/check-flagged', {
+          const res = await fetch(`${API_BASE_URL}/api/customers/check-flagged`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

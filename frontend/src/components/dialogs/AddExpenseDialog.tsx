@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import axios from 'axios';
+import { API_BASE_URL } from '@/lib/api';
 
 const expenseSchema = z.object({
   description: z.string().min(1, 'Description is required'),
@@ -62,7 +63,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess }: AddExpenseDi
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.access_token) return;
             const headers = { Authorization: `Bearer ${session.access_token}` };
-            const res = await axios.get('http://localhost:5000/api/suppliers', { headers });
+            const res = await axios.get(`${API_BASE_URL}/api/suppliers`, { headers });
             setSuppliers(res.data);
           } catch (error) {
               console.error('Error fetching suppliers:', error);
@@ -93,7 +94,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess }: AddExpenseDi
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return;
       
-      await axios.post('http://localhost:5000/api/expenses', data, {
+      await axios.post(`${API_BASE_URL}/api/expenses`, data, {
         headers: { Authorization: `Bearer ${session.access_token}` }
       });
       

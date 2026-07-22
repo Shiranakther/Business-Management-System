@@ -24,5 +24,6 @@ dist-ssr
 *.sln
 *.sw?
 config.bat
-/backend
-backend/.env
+
+# Environment files (secrets)
+!.env.example

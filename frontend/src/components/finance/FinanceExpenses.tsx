@@ -24,6 +24,7 @@ import { CheckCircle, XCircle, Clock } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
 import { supabase } from '@/lib/supabase';
 import axios from 'axios';
+import { API_BASE_URL } from '@/lib/api';
 import { toast } from 'sonner';
 import { DateRangePicker, type DateRangePreset } from '@/components/ui/date-range-picker';
 
@@ -68,8 +69,8 @@ export function FinanceExpenses({ refreshTrigger = 0 }: FinanceExpensesProps) {
         const headers = { Authorization: `Bearer ${session.access_token}` };
 
         const [expensesRes, suppliersRes] = await Promise.all([
-            axios.get('http://localhost:5000/api/expenses', { headers }),
-            axios.get('http://localhost:5000/api/suppliers', { headers })
+            axios.get(`${API_BASE_URL}/api/expenses`, { headers }),
+            axios.get(`${API_BASE_URL}/api/suppliers`, { headers })
         ]);
 
         setExpenses(expensesRes.data);
@@ -92,7 +93,7 @@ export function FinanceExpenses({ refreshTrigger = 0 }: FinanceExpensesProps) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.access_token) return;
         
-        await axios.delete(`http://localhost:5000/api/expenses/${id}`, {
+        await axios.delete(`${API_BASE_URL}/api/expenses/${id}`, {
             headers: { Authorization: `Bearer ${session.access_token}` }
         });
         toast.success('Expense deleted successfully');

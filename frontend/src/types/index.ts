@@ -121,7 +121,7 @@ export interface Customer {
   mobile: string;
   phone?: string; // Secondary
   email: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'FLAGGED';
   notes?: string;
 
   // Address (Billing)

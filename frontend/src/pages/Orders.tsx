@@ -14,7 +14,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DateRangePicker, type DateRangePreset } from '@/components/ui/date-range-picker';
-import { format } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -42,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import type { Order, Customer, InventoryItem } from '@/types';
 import axios from 'axios';
+import { API_BASE_URL } from '@/lib/api';
 
 const statusColors: Record<string, string> = {
   PENDING: 'bg-warning/10 text-warning border-warning/20',
@@ -57,19 +57,6 @@ const paymentStatusColors: Record<string, string> = {
   REFUNDED: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
-// Payment Method Labels
-const paymentMethodLabels: Record<string, string> = {
-  cod: 'Cash on Delivery',
-  bank_transfer: 'Bank Transfer',
-  card: 'Card',
-  ez_cash: 'EZ Cash',
-  cheque: 'Cheque',
-  credit_card: 'Credit Card',
-  wire: 'Wire Transfer',
-  check: 'Check',
-  cash: 'Cash',
-  net30: 'Net 30'
-};
 
 
 function formatCurrency(value: number) {
@@ -163,7 +150,7 @@ export default function Orders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   // Fetch initial data
   useEffect(() => {
@@ -174,9 +161,9 @@ export default function Orders() {
           const headers = { Authorization: `Bearer ${session.access_token}` };
           
           const [ordersRes, customersRes, inventoryRes] = await Promise.all([
-             axios.get('http://localhost:5000/api/orders', { headers }),
-             axios.get('http://localhost:5000/api/customers', { headers }),
-             axios.get('http://localhost:5000/api/inventory', { headers })
+             axios.get(`${API_BASE_URL}/api/orders`, { headers }),
+             axios.get(`${API_BASE_URL}/api/customers`, { headers }),
+             axios.get(`${API_BASE_URL}/api/inventory`, { headers })
           ]);
 
           setOrders(ordersRes.data);
@@ -371,12 +358,12 @@ export default function Orders() {
         const { data: { session } } = await supabase.auth.getSession();
         const headers = { Authorization: `Bearer ${session?.access_token}` };
 
-        await axios.post('http://localhost:5000/api/orders', orderData, {
+        await axios.post(`${API_BASE_URL}/api/orders`, orderData, {
             headers
         });
 
         // Refetch to get consistent data references
-        const ordersRes = await axios.get('http://localhost:5000/api/orders', { headers });
+        const ordersRes = await axios.get(`${API_BASE_URL}/api/orders`, { headers });
         setOrders(ordersRes.data);
 
         toast.success('Order created successfully!');
@@ -394,7 +381,7 @@ export default function Orders() {
       if (!confirm('Are you sure you want to delete this order?')) return;
       try {
           const { data: { session } } = await supabase.auth.getSession();
-          await axios.delete(`http://localhost:5000/api/orders/${orderId}`, {
+          await axios.delete(`${API_BASE_URL}/api/orders/${orderId}`, {
              headers: { Authorization: `Bearer ${session?.access_token}` }
           });
           setOrders(orders.filter(o => o.id !== orderId));
@@ -409,7 +396,7 @@ export default function Orders() {
   const handleUpdateStatus = async (orderId: string, updates: any) => {
       try {
           const { data: { session } } = await supabase.auth.getSession();
-          await axios.put(`http://localhost:5000/api/orders/${orderId}`, updates, {
+          await axios.put(`${API_BASE_URL}/api/orders/${orderId}`, updates, {
               headers: { Authorization: `Bearer ${session?.access_token}` }
           });
           

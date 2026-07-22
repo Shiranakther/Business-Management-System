@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '@/lib/api';
 
 const supplierSchema = z.object({
   companyName: z.string().min(1, 'Company name is required').max(100),
@@ -128,8 +129,8 @@ export function AddSupplierDialog({ open, onOpenChange, supplier }: AddSupplierD
       if (!session) throw new Error('No session');
 
       const url = supplier 
-        ? `http://localhost:5000/api/suppliers/${supplier.id}`
-        : 'http://localhost:5000/api/suppliers';
+        ? `${API_BASE_URL}/api/suppliers/${supplier.id}`
+        : `${API_BASE_URL}/api/suppliers`;
 
       const response = await fetch(url, {
           method: supplier ? 'PUT' : 'POST',

@@ -19,6 +19,7 @@ import {
 } from 'recharts';
 import { Loader2, Download, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { API_BASE_URL } from '@/lib/api';
 import { toast } from 'sonner';
 
 import { type ReportTemplateType } from './ReportTemplateSelector';
@@ -68,7 +69,7 @@ export function ReportViewer({ reportType, filters, template = 'modern', onClose
       if (filters.minValue !== undefined) params.append('minValue', filters.minValue.toString());
       if (filters.maxValue !== undefined) params.append('maxValue', filters.maxValue.toString());
 
-      const res = await fetch(`http://localhost:5000/api/reports/${reportType}?${params.toString()}`, {
+      const res = await fetch(`${API_BASE_URL}/api/reports/${reportType}?${params.toString()}`, {
         headers: { Authorization: `Bearer ${session.access_token}` }
       });
 

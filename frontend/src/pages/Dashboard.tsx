@@ -35,8 +35,9 @@ import { DateRangePicker, type DateRangePreset } from '@/components/ui/date-rang
 import { startOfDay, endOfDay, isWithinInterval, subDays, startOfMonth, endOfMonth, subMonths, format, eachDayOfInterval } from 'date-fns';
 import { supabase } from '@/lib/supabase';
 import axios from 'axios';
+import { API_BASE_URL } from '@/lib/api';
 import { toast } from 'sonner';
-import type { Order, Customer, InventoryItem } from '@/types';
+import type { Order, InventoryItem } from '@/types';
 
 interface StatCardProps {
   title: string;
@@ -126,7 +127,6 @@ export default function Dashboard() {
 
   // State for data
   const [orders, setOrders] = useState<Order[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -142,14 +142,13 @@ export default function Dashboard() {
         if (!session?.access_token) return;
         const headers = { Authorization: `Bearer ${session.access_token}` };
 
-        const [ordersRes, customersRes, inventoryRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/orders', { headers }),
-          axios.get('http://localhost:5000/api/customers', { headers }),
-          axios.get('http://localhost:5000/api/inventory', { headers })
+        const [ordersRes, inventoryRes] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/orders`, { headers }),
+          axios.get(`${API_BASE_URL}/api/customers`, { headers }),
+          axios.get(`${API_BASE_URL}/api/inventory`, { headers })
         ]);
 
         setOrders(ordersRes.data);
-        setCustomers(customersRes.data);
         setInventoryItems(inventoryRes.data);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);

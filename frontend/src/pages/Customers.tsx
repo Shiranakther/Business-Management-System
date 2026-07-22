@@ -18,6 +18,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/lib/supabase';
 import type { Customer, Order } from '@/types';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '@/lib/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const statusColors: Record<string, string> = {
@@ -63,8 +64,8 @@ export default function Customers() {
       const headers = { 'Authorization': `Bearer ${session.access_token}` };
 
       const [customersRes, ordersRes] = await Promise.all([
-        fetch('http://localhost:5000/api/customers', { headers }),
-        fetch('http://localhost:5000/api/orders', { headers })
+        fetch(`${API_BASE_URL}/api/customers`, { headers }),
+        fetch(`${API_BASE_URL}/api/orders`, { headers })
       ]);
       
       if (!customersRes.ok || !ordersRes.ok) throw new Error('Failed to fetch data');
@@ -103,7 +104,7 @@ export default function Customers() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5000/api/customers/${customer.id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/customers/${customer.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -115,7 +116,7 @@ export default function Customers() {
       if (!response.ok) throw new Error('Failed to update status');
 
       toast.success(newStatus === 'FLAGGED' ? 'Customer flagged' : 'Customer unflagged');
-      setSelectedCustomer(prev => prev ? { ...prev, status: newStatus } : null);
+      setSelectedCustomer(prev => prev ? { ...prev, status: newStatus as Customer['status'] } : null);
       fetchData();
     } catch (error) {
       console.error('Update status error:', error);
@@ -128,7 +129,7 @@ export default function Customers() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
-        const response = await fetch(`http://localhost:5000/api/customers/${customer.id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/customers/${customer.id}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${session.access_token}`

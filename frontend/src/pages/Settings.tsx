@@ -22,7 +22,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -41,6 +40,7 @@ import { useAppStore } from '@/stores/appStore';
 import { RolesPermissionsTab } from '@/components/settings/RolesPermissionsTab';
 import { TeamSettingsTab } from '@/components/settings/TeamSettingsTab';
 import { usePermissions } from '@/hooks/usePermissions';
+import { API_BASE_URL } from '@/lib/api';
 
 const businessSchema = z.object({
   name: z.string().min(2, 'Business name must be at least 2 characters'),
@@ -124,7 +124,7 @@ export default function Settings() {
           formData.append('logo', businessLogoFile);
       }
 
-      const response = await fetch('http://localhost:5000/api/business', {
+      const response = await fetch(`${API_BASE_URL}/api/business`, {
           method: 'PUT',
           headers: {
               'Authorization': `Bearer ${token}`
