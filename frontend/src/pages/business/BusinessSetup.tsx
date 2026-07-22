@@ -8,6 +8,7 @@ import { Building2, Globe, MapPin, Upload } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { useAppStore } from '@/stores/appStore';
+import { API_BASE_URL } from '@/lib/api';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -76,7 +77,7 @@ export default function BusinessSetup() {
           formData.append('logo', logoFile);
       }
 
-      const response = await fetch('http://localhost:5000/api/business/setup', {
+      const response = await fetch(`${API_BASE_URL}/api/business/setup`, {
           method: 'POST',
           headers: {
               'Authorization': `Bearer ${token}`

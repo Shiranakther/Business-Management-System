@@ -17,6 +17,7 @@ import { formatCurrency } from '@/lib/currency';
 import { useAppStore } from '@/stores/appStore';
 import { supabase } from '@/lib/supabase';
 import axios from 'axios';
+import { API_BASE_URL } from '@/lib/api';
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, startOfDay, endOfDay, subDays, differenceInDays, isSameDay, isSameMonth, eachDayOfInterval, eachMonthOfInterval } from 'date-fns';
 import { DateRangePicker, type DateRangePreset } from '@/components/ui/date-range-picker';
 
@@ -43,8 +44,8 @@ export function FinanceOverview() {
         const headers = { Authorization: `Bearer ${session.access_token}` };
 
         const [ordersRes, expensesRes] = await Promise.all([
-            axios.get('http://localhost:5000/api/orders', { headers }),
-            axios.get('http://localhost:5000/api/expenses', { headers })
+            axios.get(`${API_BASE_URL}/api/orders`, { headers }),
+            axios.get(`${API_BASE_URL}/api/expenses`, { headers })
         ]);
 
         setOrders(ordersRes.data);

@@ -18,7 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase';
-import { useAppStore } from '@/stores/appStore';
+// import { useAppStore } from '@/stores/appStore';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -41,7 +41,7 @@ export default function LoginPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });

@@ -9,7 +9,6 @@ import {
   Building2,
   Truck,
   FileText,
-  UserCog,
   ClipboardList,
   TrendingUp
 } from 'lucide-react';

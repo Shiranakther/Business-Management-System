@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Edit2, Check } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
 import { useAppStore } from '@/stores/appStore';
-import { Order, InventoryItem } from '@/types';
+import type { Order, InventoryItem } from '@/types';
 import { subDays, isAfter, startOfDay } from 'date-fns';
 
 import {

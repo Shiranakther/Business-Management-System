@@ -21,6 +21,7 @@ import { ReportTemplateSelector, type ReportTemplateType } from './ReportTemplat
 import { MultiSelect } from '@/components/ui/multi-select';
 import { supabase } from '@/lib/supabase';
 import axios from 'axios';
+import { API_BASE_URL } from '@/lib/api';
 
 export interface ReportFilters {
   dateRange: { from: Date | undefined; to: Date | undefined };
@@ -97,15 +98,15 @@ export function ReportFilterDialog({
               const headers = { Authorization: `Bearer ${session.access_token}` };
               
               if (reportType === 'sales') {
-                  const custRes = await axios.get('http://localhost:5000/api/customers', { headers });
+                  const custRes = await axios.get(`${API_BASE_URL}/api/customers`, { headers });
                   setCustomerOptions(custRes.data.map((c:any) => ({ label: c.companyName || c.name, value: c.id })));
                   
                   // Also fetch inventory for categories in Sales report too
-                  const invRes = await axios.get('http://localhost:5000/api/inventory', { headers });
+                  const invRes = await axios.get(`${API_BASE_URL}/api/inventory`, { headers });
                   const uniqueCategories = [...new Set(invRes.data.map((item: any) => item.category))].filter(Boolean) as string[];
                   setCategoryOptions(uniqueCategories);
               } else if (reportType === 'inventory') {
-                  const invRes = await axios.get('http://localhost:5000/api/inventory', { headers });
+                  const invRes = await axios.get(`${API_BASE_URL}/api/inventory`, { headers });
                   const uniqueCategories = [...new Set(invRes.data.map((item: any) => item.category))].filter(Boolean) as string[];
                   setCategoryOptions(uniqueCategories);
               }

@@ -10,6 +10,7 @@ import { SalesDataTable } from '@/components/sales/SalesDataTable';
 import { SalesInsightsPanel } from '@/components/sales/SalesInsightsPanel';
 import { supabase } from '@/lib/supabase';
 import axios from 'axios';
+import { API_BASE_URL } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Order, Customer, InventoryItem } from '@/types';
 import { Loader2 } from 'lucide-react';
@@ -38,9 +39,9 @@ export default function Sales() {
         const headers = { Authorization: `Bearer ${session.access_token}` };
 
         const [ordersRes, customersRes, inventoryRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/orders', { headers }),
-          axios.get('http://localhost:5000/api/customers', { headers }),
-          axios.get('http://localhost:5000/api/inventory', { headers })
+          axios.get(`${API_BASE_URL}/api/orders`, { headers }),
+          axios.get(`${API_BASE_URL}/api/customers`, { headers }),
+          axios.get(`${API_BASE_URL}/api/inventory`, { headers })
         ]);
 
         setOrders(ordersRes.data);
@@ -126,7 +127,7 @@ export default function Sales() {
 
   // State for backend metrics
   const [backendMetrics, setBackendMetrics] = useState<any>(null); // Use proper type if available or define one
-  const [metricsLoading, setMetricsLoading] = useState(false);
+  const [, setMetricsLoading] = useState(false);
 
   useEffect(() => {
       const fetchMetrics = async () => {
@@ -141,7 +142,7 @@ export default function Sales() {
               if (filters.dateRange.from) params.from = filters.dateRange.from.toISOString();
               if (filters.dateRange.to) params.to = filters.dateRange.to.toISOString();
 
-              const response = await axios.get('http://localhost:5000/api/sales/metrics', {
+              const response = await axios.get(`${API_BASE_URL}/api/sales/metrics`, {
                   headers: { Authorization: `Bearer ${session.access_token}` },
                   params
               });
@@ -222,11 +223,6 @@ export default function Sales() {
 
       return dayData;
   }, [filteredOrders]);
-
-  // Create a map for inventory items to quickly look up cost
-  const inventoryMap = useMemo(() => {
-    return new Map(inventoryItems.map(i => [i.id, i]));
-  }, [inventoryItems]);
 
    // Customer Acquisition (Mock/Simulated as we don't have user join dates easily accessible here without extra logic)
    const customerAcquisition = useMemo(() => [

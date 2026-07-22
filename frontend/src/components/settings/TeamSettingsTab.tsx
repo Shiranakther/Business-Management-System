@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from 'sonner';
-import { Loader2, Plus, Mail, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { API_BASE_URL } from '@/lib/api';
 import {
   Dialog,
   DialogContent,
@@ -60,7 +61,7 @@ export function TeamSettingsTab() {
       const token = session?.access_token;
       if (!token) return;
 
-      const response = await fetch('http://localhost:5000/api/users', {
+      const response = await fetch(`${API_BASE_URL}/api/users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -110,7 +111,7 @@ export function TeamSettingsTab() {
             return;
         }
 
-        const response = await fetch('http://localhost:5000/api/users/invite', {
+        const response = await fetch(`${API_BASE_URL}/api/users/invite`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -136,7 +137,7 @@ export function TeamSettingsTab() {
     }
   };
   
-  const handleRemoveUser = async (userId: string) => {
+  const handleRemoveUser = async () => {
       // Should call backend to remove user or remove their access
       toast.error("Removing users not yet fully implemented in backend");
   };
@@ -182,7 +183,7 @@ export function TeamSettingsTab() {
                 ))}
                 
                 {isAdmin() && (
-                   <Button variant="ghost" size="sm" onClick={() => handleRemoveUser(user.id)}>
+                   <Button variant="ghost" size="sm" onClick={() => handleRemoveUser()}>
                        <Trash2 className="w-4 h-4 text-destructive" />
                    </Button>
                 )}

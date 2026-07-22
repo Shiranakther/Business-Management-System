@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '@/lib/api';
 import type { InventoryItem, Supplier } from '@/types';
 import { Check, ChevronsUpDown, User, Mail, CreditCard, Building2, Phone, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -101,7 +102,7 @@ export function AddInventoryDialog({ open, onOpenChange, itemToEdit, onSuccess }
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session) return;
-          const res = await fetch('http://localhost:5000/api/suppliers', {
+          const res = await fetch(`${API_BASE_URL}/api/suppliers`, {
              headers: { 'Authorization': `Bearer ${session.access_token}` }
           });
           if (res.ok) {
@@ -166,8 +167,8 @@ export function AddInventoryDialog({ open, onOpenChange, itemToEdit, onSuccess }
         }
 
         const url = itemToEdit 
-            ? `http://localhost:5000/api/inventory/${itemToEdit.id}`
-            : 'http://localhost:5000/api/inventory';
+            ? `${API_BASE_URL}/api/inventory/${itemToEdit.id}`
+            : `${API_BASE_URL}/api/inventory`;
             
         const method = itemToEdit ? 'PUT' : 'POST';
 

@@ -1,14 +1,12 @@
 import { 
-  Mail, 
-  Phone, 
   Calendar, 
-  Briefcase, 
+  Mail, 
   MapPin, 
-  DollarSign,
-  User,
-  Building,
-  Clock,
-  X
+  Phone, 
+  Briefcase, 
+  User, 
+  Clock, 
+  DollarSign
 } from 'lucide-react';
 import {
   Dialog,

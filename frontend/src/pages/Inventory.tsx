@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '@/lib/api';
 import type { InventoryItem, InventoryTransaction } from '@/types';
 
 const statusColors: Record<string, string> = {
@@ -79,7 +80,7 @@ export default function Inventory() {
         if (!session) return;
 
         // Fetch Items
-        const itemsRes = await fetch('http://localhost:5000/api/inventory', {
+        const itemsRes = await fetch(`${API_BASE_URL}/api/inventory`, {
             headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
         if (itemsRes.ok) {
@@ -88,7 +89,7 @@ export default function Inventory() {
         }
 
         // Fetch Transactions
-        const txnsRes = await fetch('http://localhost:5000/api/inventory/transactions', {
+        const txnsRes = await fetch(`${API_BASE_URL}/api/inventory/transactions`, {
             headers: { 'Authorization': `Bearer ${session.access_token}` }
         });
         if (txnsRes.ok) {
