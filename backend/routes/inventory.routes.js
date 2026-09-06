@@ -3,6 +3,7 @@ import multer from 'multer';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { authenticateUser } from '../middleware/auth.middleware.js';
+import { checkAndNotifyLowStock } from '../utils/notifications.js';
 
 dotenv.config();
 const router = express.Router();
@@ -144,6 +145,12 @@ router.post('/', authenticateUser, upload.single('image'), async (req, res) => {
             }]);
         }
 
+        try {
+            await checkAndNotifyLowStock(orgId, product);
+        } catch (notifErr) {
+            console.error('Low stock notification error:', notifErr);
+        }
+
         res.status(201).json(product);
 
     } catch (error) {
@@ -225,6 +232,13 @@ router.put('/:id', authenticateUser, upload.single('image'), async (req, res) =>
             .single();
 
         if (error) throw error;
+
+        try {
+            await checkAndNotifyLowStock(orgId, updated);
+        } catch (notifErr) {
+            console.error('Low stock notification error:', notifErr);
+        }
+
         res.json(updated);
 
     } catch (error) {
@@ -290,6 +304,17 @@ router.post('/stock-update', authenticateUser, async (req, res) => {
             }]);
 
         if (txnError) throw txnError;
+
+        try {
+            await checkAndNotifyLowStock(orgId, {
+                id: itemId,
+                name: item.name,
+                quantity_on_hand: newQty,
+                reorder_point: item.reorder_point
+            });
+        } catch (notifErr) {
+            console.error('Low stock notification error:', notifErr);
+        }
 
         res.json({ message: 'Stock updated successfully', newQuantity: newQty });
 

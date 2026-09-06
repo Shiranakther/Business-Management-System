@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Check, Trash } from 'lucide-react';
+import { Bell, Check, AlertTriangle, CheckCircle, Info, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -106,7 +106,13 @@ export function NotificationBell() {
                                     }}
                                 >
                                     <div className="flex items-start justify-between gap-2">
-                                        <span className="font-semibold line-clamp-1">{notification.title}</span>
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            {notification.type === 'WARNING' && <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />}
+                                            {notification.type === 'ERROR' && <XCircle className="w-4 h-4 text-destructive shrink-0" />}
+                                            {notification.type === 'SUCCESS' && <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />}
+                                            {notification.type === 'INFO' && <Info className="w-4 h-4 text-blue-500 shrink-0" />}
+                                            <span className="font-semibold line-clamp-1">{notification.title}</span>
+                                        </div>
                                         {!notification.is_read && (
                                             <span className="w-2 h-2 mt-1 rounded-full bg-blue-500 shrink-0" />
                                         )}

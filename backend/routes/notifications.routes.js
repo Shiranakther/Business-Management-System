@@ -2,6 +2,7 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { authenticateUser } from '../middleware/auth.middleware.js';
+import { syncLowStockNotifications } from '../utils/notifications.js';
 
 dotenv.config();
 const router = express.Router();
@@ -22,6 +23,9 @@ router.get('/', authenticateUser, async (req, res) => {
         if (!orgId) {
             return res.status(403).json({ error: 'No organization found' });
         }
+
+        // Automatically sync low-stock notifications for this organization
+        await syncLowStockNotifications(orgId);
 
         const { data, error } = await supabaseAdmin
             .from('notifications')

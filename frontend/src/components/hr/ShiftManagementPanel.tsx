@@ -64,7 +64,7 @@ export function ShiftManagementPanel() {
   const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
 
   const shiftForm = useForm<ShiftFormValues>({
-    resolver: zodResolver(shiftSchema),
+    resolver: zodResolver(shiftSchema) as any,
     defaultValues: {
       name: '',
       startTime: '',
@@ -76,7 +76,7 @@ export function ShiftManagementPanel() {
   });
 
   const assignmentForm = useForm<AssignmentFormValues>({
-    resolver: zodResolver(assignmentSchema),
+    resolver: zodResolver(assignmentSchema) as any,
     defaultValues: {
       employeeId: '',
       shiftId: '',

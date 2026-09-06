@@ -144,7 +144,6 @@ export default function Dashboard() {
 
         const [ordersRes, inventoryRes] = await Promise.all([
           axios.get(`${API_BASE_URL}/api/orders`, { headers }),
-          axios.get(`${API_BASE_URL}/api/customers`, { headers }),
           axios.get(`${API_BASE_URL}/api/inventory`, { headers })
         ]);
 

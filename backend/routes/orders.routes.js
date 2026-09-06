@@ -2,7 +2,7 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { authenticateUser } from '../middleware/auth.middleware.js';
-import { createNotification } from '../utils/notifications.js';
+import { createNotification, checkAndNotifyLowStock } from '../utils/notifications.js';
 
 dotenv.config();
 const router = express.Router();
@@ -194,15 +194,23 @@ router.post('/', authenticateUser, async (req, res) => {
         for (const item of items) {
             const { data: invItem } = await supabaseAdmin
                 .from('products')
-                .select('quantity_on_hand')
+                .select('name, quantity_on_hand, reorder_point')
                 .eq('id', item.inventoryItemId)
                 .single();
 
             if (invItem) {
                 const newQty = invItem.quantity_on_hand - item.quantity;
+                let newStatus = 'IN_STOCK';
+                if (newQty <= 0) newStatus = 'OUT_OF_STOCK';
+                else if (newQty <= (invItem.reorder_point || 0)) newStatus = 'LOW_STOCK';
+
                 await supabaseAdmin
                     .from('products')
-                    .update({ quantity_on_hand: newQty })
+                    .update({ 
+                        quantity_on_hand: newQty,
+                        status: newStatus,
+                        updated_at: new Date()
+                    })
                     .eq('id', item.inventoryItemId);
                 
                 // Track inventory transaction
@@ -210,6 +218,7 @@ router.post('/', authenticateUser, async (req, res) => {
                     .from('inventory_transactions')
                     .insert({
                         organization_id: orgId,
+                        item_id: item.inventoryItemId,
                         product_id: item.inventoryItemId,
                         transaction_type: 'OUT',
                         quantity: item.quantity,
@@ -217,6 +226,18 @@ router.post('/', authenticateUser, async (req, res) => {
                         reference_id: order.id,
                         notes: `Order ${orderNumber}`
                     });
+
+                // Trigger Low Stock / Out of Stock notification if needed
+                try {
+                    await checkAndNotifyLowStock(orgId, {
+                        id: item.inventoryItemId,
+                        name: invItem.name,
+                        quantity_on_hand: newQty,
+                        reorder_point: invItem.reorder_point
+                    });
+                } catch (stockNotifErr) {
+                    console.error('Low stock notification error:', stockNotifErr);
+                }
             }
         }
 

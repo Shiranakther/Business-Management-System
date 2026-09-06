@@ -912,4 +912,236 @@ router.get('/documents/:employeeId', authenticateUser, async (req, res) => {
     }
 });
 
+
+// ============================================
+// SHIFTS
+// ============================================
+router.get('/shifts', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const { data, error } = await supabaseAdmin
+            .from('shifts')
+            .select('*')
+            .eq('organization_id', orgId)
+            .order('start_time');
+        if (error) throw error;
+        res.json(keysToCamel(data));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/shifts', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const insertData = keysToSnake(req.body);
+        const { data, error } = await supabaseAdmin
+            .from('shifts')
+            .insert({ organization_id: orgId, ...insertData })
+            .select()
+            .single();
+        if (error) throw error;
+        res.json(keysToCamel(data));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/shifts/:id', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const updateData = keysToSnake(req.body);
+        const { data, error } = await supabaseAdmin
+            .from('shifts')
+            .update(updateData)
+            .eq('id', req.params.id)
+            .eq('organization_id', orgId)
+            .select()
+            .single();
+        if (error) throw error;
+        res.json(keysToCamel(data));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/shifts/:id', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const { error } = await supabaseAdmin
+            .from('shifts')
+            .delete()
+            .eq('id', req.params.id)
+            .eq('organization_id', orgId);
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// EMPLOYEE SHIFTS
+// ============================================
+router.get('/employee-shifts', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const { data, error } = await supabaseAdmin
+            .from('employee_shifts')
+            .select('*, shifts(*), employees(first_name, last_name, employee_code)')
+            .eq('organization_id', orgId);
+        if (error) throw error;
+        res.json(keysToCamel(data));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/employee-shifts', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const insertData = keysToSnake(req.body);
+        const { data, error } = await supabaseAdmin
+            .from('employee_shifts')
+            .insert({ organization_id: orgId, ...insertData })
+            .select()
+            .single();
+        if (error) throw error;
+        res.json(keysToCamel(data));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/employee-shifts/:id', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const { error } = await supabaseAdmin
+            .from('employee_shifts')
+            .delete()
+            .eq('id', req.params.id)
+            .eq('organization_id', orgId);
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// SPECIAL DAYS
+// ============================================
+router.get('/special-days', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const { data, error } = await supabaseAdmin
+            .from('special_days')
+            .select('*')
+            .eq('organization_id', orgId)
+            .order('date');
+        if (error) throw error;
+        res.json(keysToCamel(data));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/special-days', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const insertData = keysToSnake(req.body);
+        const { data, error } = await supabaseAdmin
+            .from('special_days')
+            .insert({ organization_id: orgId, ...insertData })
+            .select()
+            .single();
+        if (error) throw error;
+        res.json(keysToCamel(data));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/special-days/:id', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const { error } = await supabaseAdmin
+            .from('special_days')
+            .delete()
+            .eq('id', req.params.id)
+            .eq('organization_id', orgId);
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// OVERTIME
+// ============================================
+router.get('/overtime', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const { data, error } = await supabaseAdmin
+            .from('overtime_records')
+            .select('*, employees(first_name, last_name, employee_code)')
+            .eq('organization_id', orgId)
+            .order('date', { ascending: false });
+        if (error) throw error;
+        res.json(keysToCamel(data));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/overtime', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const insertData = keysToSnake(req.body);
+        const { data, error } = await supabaseAdmin
+            .from('overtime_records')
+            .insert({ organization_id: orgId, ...insertData })
+            .select()
+            .single();
+        if (error) throw error;
+        res.json(keysToCamel(data));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/overtime/:id', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const updateData = keysToSnake(req.body);
+        const { data, error } = await supabaseAdmin
+            .from('overtime_records')
+            .update(updateData)
+            .eq('id', req.params.id)
+            .eq('organization_id', orgId)
+            .select()
+            .single();
+        if (error) throw error;
+        res.json(keysToCamel(data));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/overtime/:id', authenticateUser, async (req, res) => {
+    try {
+        const orgId = await getOrgId(req.user.id);
+        const { error } = await supabaseAdmin
+            .from('overtime_records')
+            .delete()
+            .eq('id', req.params.id)
+            .eq('organization_id', orgId);
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

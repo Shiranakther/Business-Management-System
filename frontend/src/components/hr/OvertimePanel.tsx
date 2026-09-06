@@ -85,7 +85,7 @@ export function OvertimePanel() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<OvertimeFormValues>({
-    resolver: zodResolver(overtimeFormSchema),
+    resolver: zodResolver(overtimeFormSchema) as any,
     defaultValues: {
       employeeId: "",
       date: new Date().toISOString().split('T')[0],
