@@ -14,7 +14,6 @@ dist-ssr
 *.local
 
 # Editor directories and files
-.vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
@@ -26,5 +25,4 @@ dist-ssr
 config.bat
 
 # Environment files (secrets)
-.env
 !.env.example
