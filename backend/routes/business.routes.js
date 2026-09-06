@@ -86,6 +86,13 @@ router.post('/setup', authenticateUser, upload.single('logo'), async (req, res) 
 
         if (linkError) throw linkError;
 
+        // 4. Assign 'admin' role to the creator
+        const { error: roleError } = await supabaseAdmin
+            .from('user_roles')
+            .upsert({ user_id: userId, role_id: 'admin' }, { onConflict: 'user_id,role_id' });
+            
+        if (roleError) console.error('Failed to assign admin role:', roleError);
+
         res.json({ message: 'Business setup successfully', organization: org });
 
     } catch (error) {

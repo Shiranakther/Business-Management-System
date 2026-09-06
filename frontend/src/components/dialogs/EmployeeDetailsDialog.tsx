@@ -1,3 +1,7 @@
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { supabase } from '@/lib/supabase';
+import { API_BASE_URL } from '@/lib/api';
 import { 
   Calendar, 
   Mail, 
@@ -6,7 +10,10 @@ import {
   Briefcase, 
   User, 
   Clock, 
-  DollarSign
+  DollarSign,
+  CheckCircle2,
+  XCircle,
+  FileText
 } from 'lucide-react';
 import {
   Dialog,
@@ -31,12 +38,15 @@ const statusColors: Record<string, string> = {
   TERMINATED: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
-function formatDate(date: Date) {
+function formatDate(date: Date | string | undefined | null) {
+  if (!date) return 'N/A';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return 'N/A';
   return new Intl.DateTimeFormat('en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
-  }).format(date);
+  }).format(d);
 }
 
 function formatCurrency(value: number) {
@@ -49,7 +59,47 @@ function formatCurrency(value: number) {
 }
 
 export function EmployeeDetailsDialog({ employee, open, onOpenChange }: EmployeeDetailsDialogProps) {
+  const [documentStatus, setDocumentStatus] = useState<{ documents: any[], missingTypes: string[] }>({ documents: [], missingTypes: [] });
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
+
+  useEffect(() => {
+    async function fetchDocuments() {
+      if (!employee?.id || !open) return;
+      setIsLoadingDocs(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await axios.get(`${API_BASE_URL}/api/hr/documents/${employee.id}`, {
+          headers: { Authorization: `Bearer ${session?.access_token}` }
+        });
+        setDocumentStatus(response.data);
+      } catch (error) {
+        console.error('Failed to fetch documents:', error);
+      } finally {
+        setIsLoadingDocs(false);
+      }
+    }
+    fetchDocuments();
+  }, [employee?.id, open]);
+
   if (!employee) return null;
+
+  const getLeaveColor = (remaining: number, total: number) => {
+    if (!total || total === 0) return 'bg-muted text-muted-foreground';
+    const percent = remaining / total;
+    if (percent === 0) return 'bg-destructive/10 text-destructive border-destructive/20';
+    if (percent < 0.5) return 'bg-warning/10 text-warning border-warning/20';
+    return 'bg-success/10 text-success border-success/20';
+  };
+
+  const documentTypes = [
+    { type: 'NIC', label: 'NIC' },
+    { type: 'SCHOOL_LEAVING_CERTIFICATE', label: 'School Leaving Certificate' },
+    { type: 'POLICE_REPORT', label: 'Police Report' },
+    { type: 'GN_CERTIFICATE', label: 'GN Certificate' },
+    { type: 'OL_CERTIFICATE', label: 'O/L Certificate' },
+    { type: 'AL_CERTIFICATE', label: 'A/L Certificate' },
+    { type: 'DEGREE_CERTIFICATE', label: 'Degree Certificate' },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -170,6 +220,41 @@ export function EmployeeDetailsDialog({ employee, open, onOpenChange }: Employee
 
           <Separator />
 
+          {/* Leave Balances */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Leave Balances
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="p-3 rounded-lg border bg-card">
+                <p className="text-xs text-muted-foreground mb-1">Annual</p>
+                <Badge variant="outline" className={getLeaveColor(employee.annualLeaveBalance ?? 14, 14)}>
+                  {employee.annualLeaveBalance ?? 14} remaining
+                </Badge>
+              </div>
+              <div className="p-3 rounded-lg border bg-card">
+                <p className="text-xs text-muted-foreground mb-1">Casual</p>
+                <Badge variant="outline" className={getLeaveColor(employee.casualLeaveBalance ?? 7, 7)}>
+                  {employee.casualLeaveBalance ?? 7} remaining
+                </Badge>
+              </div>
+              <div className="p-3 rounded-lg border bg-card">
+                <p className="text-xs text-muted-foreground mb-1">Medical</p>
+                <Badge variant="outline" className={getLeaveColor(employee.medicalLeaveBalance ?? 7, 7)}>
+                  {employee.medicalLeaveBalance ?? 7} remaining
+                </Badge>
+              </div>
+              <div className="p-3 rounded-lg border bg-card">
+                <p className="text-xs text-muted-foreground mb-1">Short</p>
+                <Badge variant="outline" className={getLeaveColor(employee.shortLeaveBalance ?? 4, 4)}>
+                  {employee.shortLeaveBalance ?? 4} remaining
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
           {/* Compensation */}
           {employee.salary && (
             <>
@@ -210,6 +295,39 @@ export function EmployeeDetailsDialog({ employee, open, onOpenChange }: Employee
                 </div>
               )}
             </div>
+          </div>
+
+          <Separator />
+
+          {/* Document Status */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Document Status
+            </h3>
+            {isLoadingDocs ? (
+              <p className="text-sm text-muted-foreground">Loading documents...</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {documentTypes.map(doc => {
+                  const isSubmitted = !documentStatus.missingTypes.includes(doc.type);
+                  return (
+                    <div key={doc.type} className="flex items-center justify-between p-2 rounded-lg border bg-card">
+                      <span className="text-sm font-medium">{doc.label}</span>
+                      {isSubmitted ? (
+                        <Badge variant="outline" className="bg-success/10 text-success border-success/20 gap-1">
+                          <CheckCircle2 className="w-3 h-3" /> Submitted
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 gap-1">
+                          <XCircle className="w-3 h-3" /> Not Submitted
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </DialogContent>

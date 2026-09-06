@@ -84,22 +84,14 @@ export default function ProtectedRoute() {
                          dateFormat: org.date_format,
                      }
                  };
-                 setCurrentTenant(tenantContext);
              }
           }
-
-          // Handle Redirections based on Tenant existence
-          if (!tenantContext && roleId === 'admin' && location.pathname !== '/setup-business') {
-              // Admin with no business -> Setup
-              // However, we can't navigate inside useEffect easily without causing loops if not careful.
-              // But here we are setting state. The render cycle will handle Navigate if we structure it right?
-              // No, we should probably let the component logic below handle it.
-              // But wait, Navigate component is only returned if !currentUser.
-          }
+          setCurrentTenant(tenantContext);
         }
       } catch (error) {
         console.error('Auth check error:', error);
         setCurrentUser(null);
+        setCurrentTenant(null);
       } finally {
         setIsLoading(false);
       }
@@ -110,6 +102,7 @@ export default function ProtectedRoute() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, _session: Session | null) => {
         if (event === 'SIGNED_OUT') {
             setCurrentUser(null);
+            setCurrentTenant(null);
         }
         if (event === 'PASSWORD_RECOVERY') {
             window.location.href = '/update-password';
@@ -134,10 +127,9 @@ export default function ProtectedRoute() {
   }
 
   // Business Setup Redirection Logic
-  // ONLY enforce this for users who are supposed to have an organization (Admins usually create it)
-  // If a user is invited (not admin), they should already be linked to one via profile.
-  // If currentUser is admin but has no tenant, they must create one.
-  if (currentUser.isSystemAdmin && !currentTenant) {
+  // If currentUser has no tenant (i.e. organization_id is null), they must create one.
+  // This happens for newly registered users.
+  if (!currentTenant) {
       if (location.pathname !== '/setup-business') {
           return <Navigate to="/setup-business" replace />;
       }

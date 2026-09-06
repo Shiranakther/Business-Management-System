@@ -1,15 +1,41 @@
-import { Users, Clock, CalendarDays, DollarSign, Lock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, Clock, CalendarDays, DollarSign, Lock, Loader2, Settings } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmployeeList } from '@/components/hr/EmployeeList';
-import { AttendancePanel } from '@/components/hr/AttendancePanel';
+import { AttendanceTabRoot } from '@/components/hr/AttendanceTabRoot';
 import { LeaveManagementPanel } from '@/components/hr/LeaveManagementPanel';
 import { PayrollPanel } from '@/components/hr/PayrollPanel';
-import { employees } from '@/data/mockData';
+import { HRSettingsTabRoot } from '@/components/hr/HRSettingsTabRoot';
 import { usePermissions } from '@/hooks/usePermissions';
+import axios from 'axios';
+import { API_BASE_URL } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 export default function HR() {
   const { canRead } = usePermissions();
+  const [stats, setStats] = useState({ totalEmployees: 0, activeEmployees: 0, onLeaveEmployees: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!canRead('hr')) return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await axios.get(`${API_BASE_URL}/api/hr/stats`, {
+          headers: { Authorization: `Bearer ${session?.access_token}` }
+        });
+        setStats(res.data);
+      } catch (error) {
+        console.error('Failed to fetch HR stats:', error);
+        toast.error('Failed to load HR statistics');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchStats();
+  }, [canRead]);
 
   if (!canRead('hr')) {
     return (
@@ -20,9 +46,6 @@ export default function HR() {
       </div>
     );
   }
-
-  const activeCount = employees.filter(e => e.status === 'ACTIVE').length;
-  const onLeaveCount = employees.filter(e => e.status === 'ON_LEAVE').length;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -44,7 +67,11 @@ export default function HR() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Employees</p>
-                <p className="text-xl font-semibold">{employees.length}</p>
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mt-1" />
+                ) : (
+                  <p className="text-xl font-semibold">{stats.totalEmployees}</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -57,7 +84,11 @@ export default function HR() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-xl font-semibold">{activeCount}</p>
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mt-1" />
+                ) : (
+                  <p className="text-xl font-semibold">{stats.activeEmployees}</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -70,7 +101,11 @@ export default function HR() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">On Leave</p>
-                <p className="text-xl font-semibold">{onLeaveCount}</p>
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mt-1" />
+                ) : (
+                  <p className="text-xl font-semibold">{stats.onLeaveEmployees}</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -96,6 +131,10 @@ export default function HR() {
                 <DollarSign className="w-4 h-4" />
                 Payroll & Advances
             </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2">
+                <Settings className="w-4 h-4" />
+                Settings
+            </TabsTrigger>
         </TabsList>
         
         <TabsContent value="employees">
@@ -103,7 +142,7 @@ export default function HR() {
         </TabsContent>
         
         <TabsContent value="attendance">
-            <AttendancePanel />
+            <AttendanceTabRoot />
         </TabsContent>
         
         <TabsContent value="leaves">
@@ -112,6 +151,10 @@ export default function HR() {
         
         <TabsContent value="payroll">
             <PayrollPanel />
+        </TabsContent>
+
+        <TabsContent value="settings">
+            <HRSettingsTabRoot />
         </TabsContent>
       </Tabs>
     </div>

@@ -15,6 +15,8 @@ import { useAppStore } from '@/stores/appStore';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
+import { NotificationBell } from './NotificationBell';
+
 export function AppHeader() {
   const { currentUser } = useAppStore();
   const navigate = useNavigate();
@@ -50,10 +52,7 @@ export function AppHeader() {
         {/* Actions */}
         <div className="flex items-center gap-2">
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
-          </Button>
+          <NotificationBell />
 
           {/* User Menu */}
           <DropdownMenu>

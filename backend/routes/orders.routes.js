@@ -2,6 +2,7 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { authenticateUser } from '../middleware/auth.middleware.js';
+import { createNotification } from '../utils/notifications.js';
 
 dotenv.config();
 const router = express.Router();
@@ -42,7 +43,8 @@ router.get('/', authenticateUser, async (req, res) => {
                     company_name,
                     email,
                     phone
-                )
+                ),
+                courier_partners (id, name, tracking_url_template)
             `)
             .eq('organization_id', orgId)
             .order('created_at', { ascending: false });
@@ -67,6 +69,11 @@ router.get('/', authenticateUser, async (req, res) => {
             shippingAddress: order.shipping_address,
             billingAddress: order.billing_address,
             notes: order.notes,
+            orderSource: order.order_source || null,
+            courierPartnerId: order.courier_partner_id,
+            courierPartnerName: order.courier_partners?.name || null,
+            trackingNumber: order.tracking_number || null,
+            trackingUrlTemplate: order.courier_partners?.tracking_url_template || null,
             createdAt: order.created_at,
             items: order.order_items.map(item => ({
                 id: item.id,
@@ -106,7 +113,10 @@ router.post('/', authenticateUser, async (req, res) => {
             paymentStatus,
             total,
             tax,
-            subtotal
+            subtotal,
+            courierPartnerId,
+            trackingNumber,
+            orderSource
         } = req.body;
 
         let finalCustomerId = customerId;
@@ -154,7 +164,10 @@ router.post('/', authenticateUser, async (req, res) => {
                 shipping_method: shippingMethod,
                 shipping_address: shippingAddress,
                 billing_address: billingAddress,
-                notes
+                notes,
+                order_source: orderSource,
+                courier_partner_id: courierPartnerId,
+                tracking_number: trackingNumber
             })
             .select()
             .single();
@@ -191,7 +204,34 @@ router.post('/', authenticateUser, async (req, res) => {
                     .from('products')
                     .update({ quantity_on_hand: newQty })
                     .eq('id', item.inventoryItemId);
+                
+                // Track inventory transaction
+                await supabaseAdmin
+                    .from('inventory_transactions')
+                    .insert({
+                        organization_id: orgId,
+                        product_id: item.inventoryItemId,
+                        transaction_type: 'OUT',
+                        quantity: item.quantity,
+                        reference_type: 'ORDER',
+                        reference_id: order.id,
+                        notes: `Order ${orderNumber}`
+                    });
             }
+        }
+
+        // Emit Notification
+        try {
+            await createNotification(
+                orgId, 
+                null, 
+                'New Order Placed', 
+                `Order ${orderNumber} for $${total} has been created.`, 
+                'SUCCESS', 
+                '/orders'
+            );
+        } catch (notifErr) {
+            console.error('Notification error:', notifErr);
         }
 
         res.status(201).json(order);
@@ -223,6 +263,11 @@ router.delete('/:id', authenticateUser, async (req, res) => {
             .single();
 
         if (fetchError) throw fetchError;
+
+        // Prevent deletes if the order is already part of an approved return process
+        if (order.status === 'RETURN_APPROVED' || order.status === 'RETURNED') {
+            return res.status(400).json({ error: 'Cannot delete an order that has an approved return' });
+        }
 
         // Restore Inventory (Add stock back)
         if (order && order.status !== 'CANCELLED') { // Only restore if not already cancelled (because cancelled orders already restored stock)
@@ -266,17 +311,33 @@ router.put('/:id', authenticateUser, async (req, res) => {
         const orgId = await getOrgId(req.user.id);
         const updates = req.body;
 
+        // Fetch current order to check status and handle inventory
+        const { data: currentOrder } = await supabaseAdmin
+            .from('orders')
+            .select('status, order_items(inventory_item_id, quantity)')
+            .eq('id', id)
+            .eq('organization_id', orgId)
+            .single();
+
+        if (!currentOrder) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        // Prevent updates if the order is already part of an approved return process
+        if (currentOrder.status === 'RETURN_APPROVED' || currentOrder.status === 'RETURNED') {
+            return res.status(400).json({ error: 'Cannot update an order that has an approved return' });
+        }
+
         // Check for status change to handle inventory
         if (updates.status) {
-            const { data: currentOrder } = await supabaseAdmin
-                .from('orders')
-                .select('status, order_items(inventory_item_id, quantity)')
-                .eq('id', id)
-                .single();
-            
             if (currentOrder) {
-                // If cancelling an active order -> Restore Stock
-                if (currentOrder.status !== 'CANCELLED' && updates.status === 'CANCELLED') {
+                const cancelling = (currentOrder.status !== 'CANCELLED' && updates.status === 'CANCELLED');
+                const returning = (currentOrder.status !== 'RETURNED' && updates.status === 'RETURNED');
+                const unCancelling = (currentOrder.status === 'CANCELLED' && updates.status !== 'CANCELLED');
+                const unReturning = (currentOrder.status === 'RETURNED' && updates.status !== 'RETURNED');
+
+                // Restore Stock (Cancelling or Returning)
+                if (cancelling || returning) {
                     for (const item of currentOrder.order_items) {
                         const { data: invItem } = await supabaseAdmin
                             .from('products')
@@ -292,8 +353,8 @@ router.put('/:id', authenticateUser, async (req, res) => {
                         }
                     }
                 }
-                // If un-cancelling (reopening) a cancelled order -> Deduct Stock
-                else if (currentOrder.status === 'CANCELLED' && updates.status !== 'CANCELLED') {
+                // Deduct Stock (Re-opening a cancelled/returned order)
+                else if (unCancelling || unReturning) {
                      for (const item of currentOrder.order_items) {
                         const { data: invItem } = await supabaseAdmin
                             .from('products')
@@ -312,13 +373,22 @@ router.put('/:id', authenticateUser, async (req, res) => {
             }
         }
 
+        const updatePayload = {
+            status: updates.status,
+            payment_status: updates.paymentStatus,
+            updated_at: new Date()
+        };
+
+        if (updates.courierPartnerId !== undefined) {
+            updatePayload.courier_partner_id = updates.courierPartnerId;
+        }
+        if (updates.trackingNumber !== undefined) {
+            updatePayload.tracking_number = updates.trackingNumber;
+        }
+
         const { data: updated, error } = await supabaseAdmin
             .from('orders')
-            .update({
-                status: updates.status,
-                payment_status: updates.paymentStatus,
-                updated_at: new Date()
-            })
+            .update(updatePayload)
             .eq('id', id)
             .eq('organization_id', orgId)
             .select()

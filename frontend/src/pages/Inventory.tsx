@@ -66,6 +66,10 @@ export default function Inventory() {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [itemToEdit, setItemToEdit] = useState<InventoryItem | null>(null);
 
+  const [activeTab, setActiveTab] = useState('products');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   // Stock Update Filter State
   const [updateSearchQuery, setUpdateSearchQuery] = useState('');
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>('all');
@@ -73,6 +77,10 @@ export default function Inventory() {
 
   const { canRead, canCreate } = usePermissions();
   const hasFetched = useRef(false);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryFilter, statusFilter, updateSearchQuery, dateRangePreset, customDateRange, activeTab]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -185,6 +193,14 @@ export default function Inventory() {
     }
   });
 
+  // Pagination logic
+  const totalItemsPages = Math.ceil(filteredItems.length / rowsPerPage);
+  const totalTxnPages = Math.ceil(filteredTransactions.length / rowsPerPage);
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentItems = filteredItems.slice(indexOfFirstRow, indexOfLastRow);
+  const currentTransactions = filteredTransactions.slice(indexOfFirstRow, indexOfLastRow);
+
   const totalValue = items.reduce((sum, item) => sum + (item.quantityOnHand * (item.costPrice || 0)), 0);
   const lowStockCount = items.filter(item => item.status === 'LOW_STOCK').length;
   const outOfStockCount = items.filter(item => item.status === 'OUT_OF_STOCK').length;
@@ -256,7 +272,7 @@ export default function Inventory() {
       />
 
       {/* Tabs */}
-      <Tabs defaultValue="products" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
             <TabsTrigger value="products" className="gap-2"><Package className="w-4 h-4"/> Products</TabsTrigger>
             <TabsTrigger value="updates" className="gap-2"><ArrowRightLeft className="w-4 h-4"/> Stock Updates</TabsTrigger>
@@ -365,50 +381,108 @@ export default function Inventory() {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredItems.map((item) => (
-                        <tr 
-                            key={item.id} 
-                            className="data-table-row cursor-pointer hover:bg-muted/50 transition-colors"
-                            onClick={() => handleRowClick(item)}
-                        >
-                            <td className="py-3 px-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg border bg-muted flex items-center justify-center overflow-hidden shrink-0">
-                                        {item.imageUrl ? (
-                                            <img 
-                                                src={item.imageUrl} 
-                                                alt={item.name} 
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <Package className="w-5 h-5 text-muted-foreground" />
-                                        )}
+                        {currentItems.length > 0 ? (
+                            currentItems.map((item) => (
+                            <tr 
+                                key={item.id} 
+                                className="data-table-row cursor-pointer hover:bg-muted/50 transition-colors"
+                                onClick={() => handleRowClick(item)}
+                            >
+                                <td className="py-3 px-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg border bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                                            {item.imageUrl ? (
+                                                <img 
+                                                    src={item.imageUrl} 
+                                                    alt={item.name} 
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <Package className="w-5 h-5 text-muted-foreground" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium">{item.name}</p>
+                                            {item.description && (
+                                            <p className="text-sm text-muted-foreground truncate max-w-[200px]">
+                                                {item.description}
+                                            </p>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="font-medium">{item.name}</p>
-                                        {item.description && (
-                                        <p className="text-sm text-muted-foreground truncate max-w-[200px]">
-                                            {item.description}
-                                        </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </td>
-                            <td className="py-3 px-4 text-muted-foreground font-mono text-sm">{item.sku}</td>
-                            <td className="py-3 px-4 text-muted-foreground">{item.category}</td>
-                            <td className="py-3 px-4 text-right font-medium">{item.quantityOnHand}</td>
-                            <td className="py-3 px-4 text-right">{formatCurrency(item.unitPrice)}</td>
-                            <td className="py-3 px-4">
-                            <Badge variant="outline" className={statusColors[item.status]}>
-                                {item.status.replace(/_/g, ' ')}
-                            </Badge>
-                            </td>
-                            <td className="py-3 px-4 text-muted-foreground">{formatDate(item.lastUpdated)}</td>
-                        </tr>
-                        ))}
+                                </td>
+                                <td className="py-3 px-4 text-muted-foreground font-mono text-sm">{item.sku}</td>
+                                <td className="py-3 px-4 text-muted-foreground">{item.category}</td>
+                                <td className="py-3 px-4 text-right font-medium">{item.quantityOnHand}</td>
+                                <td className="py-3 px-4 text-right">{formatCurrency(item.unitPrice)}</td>
+                                <td className="py-3 px-4">
+                                <Badge variant="outline" className={statusColors[item.status]}>
+                                    {item.status.replace(/_/g, ' ')}
+                                </Badge>
+                                </td>
+                                <td className="py-3 px-4 text-muted-foreground">{formatDate(item.lastUpdated)}</td>
+                            </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan={7} className="text-center py-8 text-muted-foreground">
+                                    No products found matching your filters.
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                     </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {filteredItems.length > 0 && (
+                  <div className="flex items-center justify-between px-2 py-4 mt-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <p>Rows per page:</p>
+                      <Select 
+                        value={rowsPerPage.toString()} 
+                        onValueChange={(val) => {
+                          setRowsPerPage(Number(val));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 w-[70px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                      <p className="text-sm text-muted-foreground">
+                        Page {currentPage} of {totalItemsPages || 1}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setCurrentPage(prev => Math.min(totalItemsPages, prev + 1))}
+                          disabled={currentPage >= totalItemsPages || totalItemsPages === 0}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 </CardContent>
             </Card>
         </TabsContent>
@@ -459,8 +533,8 @@ export default function Inventory() {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredTransactions.length > 0 ? (
-                            filteredTransactions.map((txn) => (
+                        {currentTransactions.length > 0 ? (
+                            currentTransactions.map((txn) => (
                             <tr key={txn.id} className="data-table-row">
                                 <td className="py-3 px-4 font-medium">{txn.itemName}</td>
                                 <td className="py-3 px-4">
@@ -497,6 +571,56 @@ export default function Inventory() {
                     </tbody>
                     </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {filteredTransactions.length > 0 && (
+                  <div className="flex items-center justify-between px-2 py-4 mt-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <p>Rows per page:</p>
+                      <Select 
+                        value={rowsPerPage.toString()} 
+                        onValueChange={(val) => {
+                          setRowsPerPage(Number(val));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 w-[70px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5</SelectItem>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                      <p className="text-sm text-muted-foreground">
+                        Page {currentPage} of {totalTxnPages || 1}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setCurrentPage(prev => Math.min(totalTxnPages, prev + 1))}
+                          disabled={currentPage >= totalTxnPages || totalTxnPages === 0}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 </CardContent>
             </Card>
         </TabsContent>

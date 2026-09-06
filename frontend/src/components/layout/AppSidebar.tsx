@@ -10,7 +10,10 @@ import {
   Truck,
   FileText,
   ClipboardList,
-  TrendingUp
+  TrendingUp,
+  RotateCcw,
+  Send,
+  UserCog
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/appStore';
@@ -29,10 +32,12 @@ const navItems: NavItem[] = [
   { label: 'Inventory', href: '/inventory', icon: Package },
   { label: 'Sales', href: '/sales', icon: TrendingUp },
   { label: 'Orders', href: '/orders', icon: ClipboardList },
+  { label: 'Courier Partners', href: '/couriers', icon: Send },
+  { label: 'Returns', href: '/returns', icon: RotateCcw },
   { label: 'Customers', href: '/customers', icon: Users },
   { label: 'Suppliers', href: '/suppliers', icon: Truck },
   { label: 'Finance', href: '/finance', icon: DollarSign },
-  // { label: 'HR', href: '/hr', icon: UserCog },
+  { label: 'HR', href: '/hr', icon: UserCog },
   { label: 'Reports', href: '/reports', icon: FileText },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];

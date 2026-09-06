@@ -36,6 +36,14 @@ export default function Suppliers() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null); // For Edit Mode
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, paymentTermsFilter]);
+
   const { canRead, canCreate, isAdmin } = usePermissions();
 
   const fetchSuppliers = useCallback(async () => {
@@ -122,6 +130,12 @@ export default function Suppliers() {
 
     return matchesSearch && matchesStatus && matchesPayment;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredSuppliers.length / rowsPerPage);
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentSuppliers = filteredSuppliers.slice(indexOfFirstRow, indexOfLastRow);
 
   const activeSuppliersCount = suppliersList.filter(s => s.status === 'ACTIVE').length;
   const uniquePaymentTerms = [...new Set(suppliersList.map(s => s.paymentTerms))];
@@ -271,8 +285,8 @@ export default function Suppliers() {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredSuppliers.length > 0 ? (
-                            filteredSuppliers.map((supplier) => (
+                        {currentSuppliers.length > 0 ? (
+                            currentSuppliers.map((supplier) => (
                             <tr 
                                 key={supplier.id} 
                                 className="data-table-row cursor-pointer hover:bg-muted/50 transition-colors"
@@ -314,6 +328,56 @@ export default function Suppliers() {
                     </tbody>
                     </table>
                 </div>
+            )}
+            
+            {/* Pagination Controls */}
+            {filteredSuppliers.length > 0 && (
+              <div className="flex items-center justify-between px-2 py-4 mt-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <p>Rows per page:</p>
+                  <Select 
+                    value={rowsPerPage.toString()} 
+                    onValueChange={(val) => {
+                      setRowsPerPage(Number(val));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[70px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <p className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages || 1}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage >= totalPages || totalPages === 0}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </div>
             )}
         </CardContent>
       </Card>

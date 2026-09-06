@@ -11,28 +11,30 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { employees, salaryAdvanceRequests } from '@/data/mockData';
+import { cn } from '@/lib/utils';
+import axios from 'axios';
+import { API_BASE_URL } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
+
+const getHeaders = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return { Authorization: `Bearer ${session?.access_token}` };
+};
 
 const paymentSchema = z.object({
   employeeId: z.string().min(1, 'Employee is required'),
   basicSalary: z.coerce.number().min(0),
   payPeriodStart: z.string().min(1, 'Start date is required'),
   payPeriodEnd: z.string().min(1, 'End date is required'),
-  // Additions
   allowances: z.coerce.number().min(0).optional(),
   bonuses: z.coerce.number().min(0).optional(),
   overtime: z.coerce.number().min(0).optional(),
-  // Deductions
-  epfDeduction: z.coerce.number().min(0).optional(), // 8% typically
-  etfDefault: z.coerce.number().min(0).optional(), // Employer pays, strictly speaking not a deduction from net but useful to track or display
+  epfDeduction: z.coerce.number().min(0).optional(),
+  etfDefault: z.coerce.number().min(0).optional(),
   taxDeduction: z.coerce.number().min(0).optional(),
   salaryAdvanceDeduction: z.coerce.number().min(0).optional(),
   otherDeductions: z.coerce.number().min(0).optional(),
@@ -40,14 +42,23 @@ const paymentSchema = z.object({
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
 
+interface Employee {
+  id: string;
+  firstName: string;
+  lastName: string;
+  salary?: number;
+}
+
 interface CreatePaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 }
 
-export function CreatePaymentDialog({ open, onOpenChange }: CreatePaymentDialogProps) {
+export function CreatePaymentDialog({ open, onOpenChange, onSuccess }: CreatePaymentDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [openCombobox, setOpenCombobox] = useState(false);
   const [calculatedNet, setCalculatedNet] = useState<number>(0);
   const [grossSalary, setGrossSalary] = useState<number>(0);
   const [totalDeductions, setTotalDeductions] = useState<number>(0);
@@ -72,37 +83,39 @@ export function CreatePaymentDialog({ open, onOpenChange }: CreatePaymentDialogP
     },
   });
 
-  // Watch form values to auto-calculate totals
   const watchedValues = watch();
+  const selectedEmployeeId = watch('employeeId');
+  const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
+  const selectedLabel = selectedEmployee ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}` : '';
 
   useEffect(() => {
-    if (selectedEmployeeId) {
-      const employee = employees.find(e => e.id === selectedEmployeeId);
-      if (employee && employee.salary) {
-        // Assume monthly salary is annual / 12 for this mock
-        const monthlyBasic = Math.round(employee.salary / 12);
+    if (open) {
+      const fetchEmployees = async () => {
+        try {
+          const headers = await getHeaders();
+          const response = await axios.get(`${API_BASE_URL}/api/hr/employees`, { headers });
+          setEmployees(response.data.data || []);
+        } catch (error) {
+          console.error('Error fetching employees:', error);
+          toast.error('Failed to load employees');
+        }
+      };
+      fetchEmployees();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (selectedEmployeeId && selectedEmployee) {
+      if (selectedEmployee.salary) {
+        const monthlyBasic = Math.round(selectedEmployee.salary / 12);
         setValue('basicSalary', monthlyBasic);
         
-        // Auto-calculate EPF (8% of basic)
         const epf = Math.round(monthlyBasic * 0.08);
         setValue('epfDeduction', epf);
-
-        // Check for approved salary advances
-        const advances = salaryAdvanceRequests
-          .filter(r => r.employeeId === selectedEmployeeId && r.status === 'APPROVED');
-        
-        // Simple logic: if there is an outstanding advance, suggest it as deduction
-        // In a real app, we'd track balance remaining.
-        const totalAdvances = advances.reduce((sum, r) => sum + r.amount, 0);
-        if (totalAdvances > 0) {
-           setValue('salaryAdvanceDeduction', totalAdvances);
-           toast.info(`Employee has ${totalAdvances} in approved salary advances.`);
-        } else {
-           setValue('salaryAdvanceDeduction', 0);
-        }
+        setValue('salaryAdvanceDeduction', 0);
       }
     }
-  }, [selectedEmployeeId, setValue]);
+  }, [selectedEmployeeId, selectedEmployee, setValue]);
 
   useEffect(() => {
     const basic = Number(watchedValues.basicSalary) || 0;
@@ -127,12 +140,25 @@ export function CreatePaymentDialog({ open, onOpenChange }: CreatePaymentDialogP
   const onSubmit = async (data: PaymentFormData) => {
     setIsSubmitting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      console.log('Processed Payment:', { ...data, netSalary: calculatedNet });
+      const headers = await getHeaders();
+      await axios.post(`${API_BASE_URL}/api/hr/payroll`, {
+        employeeId: data.employeeId,
+        payPeriodStart: data.payPeriodStart,
+        payPeriodEnd: data.payPeriodEnd,
+        basicSalary: data.basicSalary,
+        bonuses: (Number(data.allowances) || 0) + (Number(data.bonuses) || 0) + (Number(data.overtime) || 0),
+        deductions: totalDeductions,
+        netSalary: calculatedNet
+      }, { headers });
+      
       toast.success(`Payroll processed! Net Salary: $${calculatedNet}`);
       reset();
       onOpenChange(false);
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
+      console.error('Error creating payroll:', error);
       toast.error('Failed to process payroll');
     } finally {
       setIsSubmitting(false);
@@ -147,20 +173,40 @@ export function CreatePaymentDialog({ open, onOpenChange }: CreatePaymentDialogP
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             
-          {/* Employee & Dates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div className="space-y-2 md:col-span-2">
                 <Label>Employee</Label>
-                <Select onValueChange={(val) => { setValue('employeeId', val); setSelectedEmployeeId(val); }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map(e => (
-                        <SelectItem key={e.id} value={e.id}>{e.firstName} {e.lastName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                      {selectedLabel || "Select employee..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search employee..." />
+                      <CommandList>
+                        <CommandEmpty>No employee found.</CommandEmpty>
+                        <CommandGroup>
+                          {employees.map(emp => (
+                            <CommandItem 
+                              key={emp.id} 
+                              value={`${emp.firstName} ${emp.lastName}`} 
+                              onSelect={() => { 
+                                setValue('employeeId', emp.id, { shouldValidate: true }); 
+                                setOpenCombobox(false); 
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", selectedEmployeeId === emp.id ? "opacity-100" : "opacity-0")} />
+                              {emp.firstName} {emp.lastName}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 {errors.employeeId && <p className="text-sm text-destructive">{errors.employeeId.message}</p>}
              </div>
              
@@ -177,7 +223,6 @@ export function CreatePaymentDialog({ open, onOpenChange }: CreatePaymentDialogP
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Earnings */}
               <div className="space-y-4 p-4 border rounded-lg bg-slate-50 dark:bg-slate-900/50">
                   <h3 className="font-semibold flex items-center text-success">Earnings</h3>
                   
@@ -204,7 +249,6 @@ export function CreatePaymentDialog({ open, onOpenChange }: CreatePaymentDialogP
                   </div>
               </div>
 
-              {/* Deductions */}
               <div className="space-y-4 p-4 border rounded-lg bg-slate-50 dark:bg-slate-900/50">
                   <h3 className="font-semibold flex items-center text-destructive">Deductions</h3>
                   
@@ -222,7 +266,6 @@ export function CreatePaymentDialog({ open, onOpenChange }: CreatePaymentDialogP
                         <Input type="number" {...register('salaryAdvanceDeduction')} className="pl-8" />
                         <span className="absolute left-2.5 top-2.5 text-muted-foreground text-xs">$</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Auto-filled if approved advances exist</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Other Deductions</Label>
@@ -236,7 +279,6 @@ export function CreatePaymentDialog({ open, onOpenChange }: CreatePaymentDialogP
               </div>
           </div>
 
-          {/* Net Salary Display */}
           <div className="p-4 bg-primary/10 rounded-lg flex justify-between items-center">
               <div>
                   <h4 className="font-bold text-lg">Net Salary</h4>

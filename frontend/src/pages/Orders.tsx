@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, Eye, FileText, ShoppingCart, Trash2, Check, ChevronsUpDown, Printer, Loader2 } from 'lucide-react';
+import { Plus, Search, Eye, FileText, ShoppingCart, Trash2, Check, ChevronsUpDown, Printer, Loader2, RotateCcw } from 'lucide-react';
 import { ReportPreviewDialog } from '@/components/reports/ReportPreviewDialog';
 import { ReportTemplateSelector, type ReportTemplateType } from '@/components/reports/ReportTemplateSelector';
 import type { ReportData } from '@/components/reports/templates/types';
@@ -39,7 +39,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
-import type { Order, Customer, InventoryItem } from '@/types';
+import type { Order, Customer, InventoryItem, CourierPartner } from '@/types';
 import axios from 'axios';
 import { API_BASE_URL } from '@/lib/api';
 
@@ -49,6 +49,9 @@ const statusColors: Record<string, string> = {
   SHIPPED: 'bg-accent/10 text-accent border-accent/20',
   DELIVERED: 'bg-success/10 text-success border-success/20',
   CANCELLED: 'bg-destructive/10 text-destructive border-destructive/20',
+  RETURN_REQUESTED: 'bg-orange-500/10 text-orange-600 border-orange-500/20',
+  RETURN_APPROVED: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+  RETURNED: 'bg-pink-500/10 text-pink-600 border-pink-500/20',
 };
 
 const paymentStatusColors: Record<string, string> = {
@@ -143,14 +146,28 @@ export default function Orders() {
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [shippingMethod, setShippingMethod] = useState('');
+  const [orderSource, setOrderSource] = useState('Direct Order');
   const [newOrderStatus, setNewOrderStatus] = useState('PENDING');
   const [newPaymentStatus, setNewPaymentStatus] = useState('PENDING');
+
+  const [courierPartners, setCourierPartners] = useState<CourierPartner[]>([]);
+  const [selectedCourierId, setSelectedCourierId] = useState('');
+  const [trackingNumber, setTrackingNumber] = useState('');
 
   // Fetch real data state
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [, setLoading] = useState(true);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, dateFilter, customDateRange]);
 
   // Fetch initial data
   useEffect(() => {
@@ -160,15 +177,17 @@ export default function Orders() {
           if (!session?.access_token) return;
           const headers = { Authorization: `Bearer ${session.access_token}` };
           
-          const [ordersRes, customersRes, inventoryRes] = await Promise.all([
+          const [ordersRes, customersRes, inventoryRes, couriersRes] = await Promise.all([
              axios.get(`${API_BASE_URL}/api/orders`, { headers }),
              axios.get(`${API_BASE_URL}/api/customers`, { headers }),
-             axios.get(`${API_BASE_URL}/api/inventory`, { headers })
+             axios.get(`${API_BASE_URL}/api/inventory`, { headers }),
+             axios.get(`${API_BASE_URL}/api/couriers`, { headers })
           ]);
 
           setOrders(ordersRes.data);
           setCustomers(customersRes.data);
           setInventoryItems(inventoryRes.data);
+          setCourierPartners(couriersRes.data.filter((c: CourierPartner) => c.isActive));
       } catch (error) {
           console.error('Error fetching data:', error);
           toast.error('Failed to load orders data');
@@ -251,6 +270,12 @@ export default function Orders() {
     
     return matchesSearch && matchesStatus && matchesDate;
   });
+
+  // Pagination logic
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const currentOrders = filteredOrders.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(filteredOrders.length / rowsPerPage);
 
   const totalRevenue = orders.reduce((sum, order) => order.paymentStatus === 'PAID' ? sum + order.total : sum, 0) || 0;
   const pendingOrders = orders.filter(order => order.status === 'PENDING').length;
@@ -350,6 +375,9 @@ export default function Orders() {
             shippingMethod,
             status: newOrderStatus,
             paymentStatus: newPaymentStatus,
+            courierPartnerId: selectedCourierId || null,
+            trackingNumber: trackingNumber || null,
+            orderSource,
             total: calculateTotal(),
             subtotal: calculateSubtotal(), // Backend expects this
             tax: calculateTax() // Backend expects this
@@ -436,6 +464,9 @@ export default function Orders() {
     setNotes('');
     setPaymentMethod('');
     setShippingMethod('');
+    setOrderSource('Direct Order');
+    setSelectedCourierId('');
+    setTrackingNumber('');
     setNewOrderStatus('PENDING');
     setNewPaymentStatus('PENDING');
   };
@@ -615,13 +646,14 @@ export default function Orders() {
                   <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Items</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Payment</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Tracking #</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Date</th>
                   <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Total</th>
                   <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredOrders.map((order) => (
+                {currentOrders.map((order) => (
                   <tr key={order.id} className="data-table-row">
                     <td className="py-3 px-4 font-medium font-mono">{order.orderNumber}</td>
                     <td className="py-3 px-4 text-muted-foreground">{order.customerName}</td>
@@ -635,6 +667,13 @@ export default function Orders() {
                       <Badge variant="outline" className={paymentStatusColors[order.paymentStatus]}>
                         {order.paymentStatus.charAt(0) + order.paymentStatus.slice(1).toLowerCase()}
                       </Badge>
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground">
+                      {order.trackingNumber ? (
+                        <span className="font-mono text-xs bg-muted px-2 py-1 rounded">
+                          {order.trackingNumber}
+                        </span>
+                      ) : '-'}
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">{formatDate(order.createdAt)}</td>
                     <td className="py-3 px-4 text-right font-medium">{formatCurrency(order.total)}</td>
@@ -650,6 +689,7 @@ export default function Orders() {
                         variant="ghost" 
                         size="sm"
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        disabled={order.status === 'RETURN_APPROVED' || order.status === 'RETURNED'}
                         onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteOrder(order.id);
@@ -662,6 +702,53 @@ export default function Orders() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="flex items-center justify-between px-2 py-4 mt-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <p>Rows per page:</p>
+              <Select 
+                value={rowsPerPage.toString()} 
+                onValueChange={(val) => {
+                  setRowsPerPage(Number(val));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages || 1}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage >= totalPages || totalPages === 0}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -684,6 +771,7 @@ export default function Orders() {
                   <Select 
                     value={selectedOrder.status} 
                     onValueChange={(value) => handleUpdateStatus(selectedOrder.id, { status: value })}
+                    disabled={selectedOrder.status === 'RETURN_APPROVED' || selectedOrder.status === 'RETURNED'}
                   >
                     <SelectTrigger className="h-8">
                       <SelectValue />
@@ -698,6 +786,10 @@ export default function Orders() {
                   </Select>
                 </div>
                 <div>
+                  <p className="text-sm text-muted-foreground">Order Source</p>
+                  <p className="font-medium mt-1">{selectedOrder.orderSource || 'N/A'}</p>
+                </div>
+                <div>
                   <p className="text-sm text-muted-foreground">Created</p>
                   <p className="font-medium mt-1">{formatDate(selectedOrder.createdAt)}</p>
                 </div>
@@ -706,6 +798,7 @@ export default function Orders() {
                   <Select 
                     value={selectedOrder.paymentStatus} 
                     onValueChange={(value) => handleUpdateStatus(selectedOrder.id, { paymentStatus: value })}
+                    disabled={selectedOrder.status === 'RETURN_APPROVED' || selectedOrder.status === 'RETURNED'}
                   >
                     <SelectTrigger className="h-8">
                       <SelectValue />
@@ -717,6 +810,30 @@ export default function Orders() {
                     </SelectContent>
                   </Select>
                 </div>
+                {selectedOrder.courierPartnerName && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Courier</p>
+                    <p className="font-medium mt-1">{selectedOrder.courierPartnerName}</p>
+                  </div>
+                )}
+                {selectedOrder.trackingNumber && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Tracking</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="font-medium font-mono">{selectedOrder.trackingNumber}</p>
+                      {selectedOrder.trackingUrlTemplate && (
+                        <a
+                          href={selectedOrder.trackingUrlTemplate.replace('{tracking}', selectedOrder.trackingNumber)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline text-sm"
+                        >
+                          Track →
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -764,15 +881,45 @@ export default function Orders() {
             </div>
           )}
           <DialogFooter className="flex w-full justify-between items-center gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowInvoiceDialog(true);
-              }}
-            >
-              <Printer className="w-4 h-4 mr-2" />
-              Print Invoice
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowInvoiceDialog(true);
+                }}
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Print Invoice
+              </Button>
+              {selectedOrder && (selectedOrder.status === 'SHIPPED' || selectedOrder.status === 'DELIVERED') && (
+                <Button 
+                  variant="outline"
+                  className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                  onClick={async () => {
+                    const reason = window.prompt('Enter return reason:');
+                    if (!reason) return;
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession();
+                      await axios.post(`${API_BASE_URL}/api/returns`, 
+                        { orderId: selectedOrder.id, reason },
+                        { headers: { Authorization: `Bearer ${session?.access_token}` } }
+                      );
+                      const ordersRes = await axios.get(`${API_BASE_URL}/api/orders`, { 
+                        headers: { Authorization: `Bearer ${session?.access_token}` } 
+                      });
+                      setOrders(ordersRes.data);
+                      setSelectedOrder(null);
+                      toast.success('Return request created successfully');
+                    } catch (error: any) {
+                      toast.error(error.response?.data?.error || 'Failed to create return');
+                    }
+                  }}
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Process Return
+                </Button>
+              )}
+            </div>
             <Button 
               variant="ghost"
               onClick={() => setSelectedOrder(null)}
@@ -979,6 +1126,22 @@ export default function Orders() {
                 />
               </div>
 
+              <div>
+                <Label htmlFor="orderSource">Order Source</Label>
+                <Select value={orderSource} onValueChange={setOrderSource}>
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="Select Order Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Direct Order">Direct Order</SelectItem>
+                    <SelectItem value="Facebook">Facebook</SelectItem>
+                    <SelectItem value="TikTok">TikTok</SelectItem>
+                    <SelectItem value="Repeat Buyer">Repeat Buyer</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="status">Order Status</Label>
@@ -1027,19 +1190,28 @@ export default function Orders() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="shippingMethod">Shipping Method</Label>
-                  <Select value={shippingMethod} onValueChange={setShippingMethod}>
+                  <Label htmlFor="courierPartner">Courier Partner</Label>
+                  <Select value={selectedCourierId} onValueChange={setSelectedCourierId}>
                     <SelectTrigger className="mt-1.5">
-                      <SelectValue placeholder="Select" />
+                      <SelectValue placeholder="Select courier" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="standard">Standard (5-7 days)</SelectItem>
-                      <SelectItem value="express">Express (2-3 days)</SelectItem>
-                      <SelectItem value="overnight">Overnight</SelectItem>
-                      <SelectItem value="pickup">Store Pickup</SelectItem>
+                      {courierPartners.map(cp => (
+                        <SelectItem key={cp.id} value={cp.id}>{cp.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+              <div>
+                <Label htmlFor="trackingNumber">Tracking Number</Label>
+                <Input
+                  id="trackingNumber"
+                  value={trackingNumber}
+                  onChange={(e) => setTrackingNumber(e.target.value)}
+                  placeholder="Enter tracking number"
+                  className="mt-1.5"
+                />
               </div>
 
               <div>

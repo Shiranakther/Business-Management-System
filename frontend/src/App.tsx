@@ -21,6 +21,8 @@ import HR from "./pages/HR";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import Couriers from "./pages/Couriers";
+import Returns from "./pages/Returns";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +49,8 @@ const App = () => (
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/sales" element={<Sales />} />
               <Route path="/orders" element={<Orders />} />
+              <Route path="/couriers" element={<Couriers />} />
+              <Route path="/returns" element={<Returns />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/suppliers" element={<Suppliers />} />
               <Route path="/finance" element={<Finance />} />

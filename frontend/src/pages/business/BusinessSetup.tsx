@@ -116,6 +116,12 @@ export default function BusinessSetup() {
                   dateFormat: data.organization.date_format
               }
           });
+          
+          // Also make sure user is marked as admin locally
+          const { currentUser, setCurrentUser } = useAppStore.getState();
+          if (currentUser) {
+              setCurrentUser({ ...currentUser, isSystemAdmin: true });
+          }
       }
 
       toast.success('Business profile created successfully!');

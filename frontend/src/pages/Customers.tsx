@@ -52,6 +52,14 @@ export default function Customers() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const { canRead, canCreate, canDelete } = usePermissions();
 
+  const [activeTab, setActiveTab] = useState('saved');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, typeFilter, statusFilter, activeTab]);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -185,81 +193,140 @@ export default function Customers() {
     .filter(o => o.status !== 'CANCELLED')
     .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
-  const renderCustomerGrid = (customerList: Customer[]) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {customerList.map((customer) => {
-        const stats = getCustomerStats(customer.id);
-        return (
-          <Card 
-            key={customer.id} 
-            className="hover:shadow-md transition-shadow cursor-pointer hover:border-primary/40 group"
-            onClick={() => handleCustomerClick(customer)}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <Avatar className="w-12 h-12 transition-transform group-hover:scale-105">
-                  <AvatarFallback className={`${customer.customerType === 'B2B' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'}`}>
-                    {customer.customerType === 'B2B' ? <Building2 className="w-6 h-6" /> : <UserIcon className="w-6 h-6" />}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
-                      {customer.customerType === 'B2B' ? customer.companyName : customer.name}
-                    </h3>
-                    <Badge variant="outline" className={statusColors[customer.status]}>
-                      {customer.status}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-secondary/30">
-                          {customer.customerType}
-                      </Badge>
-                      <p className="text-sm text-muted-foreground truncate">{customer.name}</p>
-                  </div>
-                </div>
-              </div>
+  const renderCustomerGrid = (customerList: Customer[]) => {
+    const totalPages = Math.ceil(customerList.length / rowsPerPage);
+    const indexOfLastRow = currentPage * rowsPerPage;
+    const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+    const currentList = customerList.slice(indexOfFirstRow, indexOfLastRow);
 
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Mail className="w-4 h-4 text-primary/60" />
-                  <span className="truncate">{customer.email || 'No email'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Phone className="w-4 h-4 text-primary/60" />
-                  <span>{customer.mobile}</span>
-                </div>
-              </div>
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {currentList.map((customer) => {
+            const stats = getCustomerStats(customer.id);
+            return (
+              <Card 
+                key={customer.id} 
+                className="hover:shadow-md transition-shadow cursor-pointer hover:border-primary/40 group"
+                onClick={() => handleCustomerClick(customer)}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <Avatar className="w-12 h-12 transition-transform group-hover:scale-105">
+                      <AvatarFallback className={`${customer.customerType === 'B2B' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'}`}>
+                        {customer.customerType === 'B2B' ? <Building2 className="w-6 h-6" /> : <UserIcon className="w-6 h-6" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
+                          {customer.customerType === 'B2B' ? customer.companyName : customer.name}
+                        </h3>
+                        <Badge variant="outline" className={statusColors[customer.status]}>
+                          {customer.status}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-secondary/30">
+                              {customer.customerType}
+                          </Badge>
+                          <p className="text-sm text-muted-foreground truncate">{customer.name}</p>
+                      </div>
+                    </div>
+                  </div>
 
-              <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-2">
-                <div>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Orders</p>
-                  <p className="font-semibold">{stats.totalOrders}</p>
-                </div>
-                <div className="text-center">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Outstanding</p>
-                    <p className={`font-semibold ${stats.outstanding > 0 ? 'text-destructive' : 'text-success'}`}>
-                        {formatCurrency(stats.outstanding)}
-                    </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">LTV</p>
-                  <p className="font-semibold text-primary">{formatCurrency(stats.ltv)}</p>
-                </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Mail className="w-4 h-4 text-primary/60" />
+                      <span className="truncate">{customer.email || 'No email'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Phone className="w-4 h-4 text-primary/60" />
+                      <span>{customer.mobile}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-2">
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Orders</p>
+                      <p className="font-semibold">{stats.totalOrders}</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Outstanding</p>
+                        <p className={`font-semibold ${stats.outstanding > 0 ? 'text-destructive' : 'text-success'}`}>
+                            {formatCurrency(stats.outstanding)}
+                        </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">LTV</p>
+                      <p className="font-semibold text-primary">{formatCurrency(stats.ltv)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+          {customerList.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-2xl bg-muted/5">
+                  <UserIcon className="w-12 h-12 mb-4 opacity-20" />
+                  <p className="font-medium">No customers found</p>
+                  <p className="text-sm">Try adjusting your filters or add a new customer</p>
               </div>
-            </CardContent>
-          </Card>
-        );
-      })}
-      {customerList.length === 0 && (
-          <div className="col-span-full flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-2xl bg-muted/5">
-              <UserIcon className="w-12 h-12 mb-4 opacity-20" />
-              <p className="font-medium">No customers found</p>
-              <p className="text-sm">Try adjusting your filters or add a new customer</p>
+          )}
+        </div>
+
+        {/* Pagination Controls */}
+        {customerList.length > 0 && (
+          <div className="flex items-center justify-between px-2 py-4 mt-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <p>Items per page:</p>
+              <Select 
+                value={rowsPerPage.toString()} 
+                onValueChange={(val) => {
+                  setRowsPerPage(Number(val));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="6">6</SelectItem>
+                  <SelectItem value="12">12</SelectItem>
+                  <SelectItem value="24">24</SelectItem>
+                  <SelectItem value="48">48</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages || 1}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage >= totalPages || totalPages === 0}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           </div>
-      )}
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -410,7 +477,7 @@ export default function Customers() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
       ) : (
-        <Tabs defaultValue="saved" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="bg-background border w-full justify-start overflow-x-auto">
                 <TabsTrigger value="saved" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
                     Saved Customers ({savedCustomers.length})

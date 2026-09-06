@@ -33,9 +33,13 @@ import inventoryRoutes from './routes/inventory.routes.js';
 import suppliersRoutes from './routes/suppliers.routes.js';
 import customersRoutes from './routes/customers.routes.js';
 import ordersRoutes from './routes/orders.routes.js';
+import courierRoutes from './routes/courier.routes.js';
+import returnsRoutes from './routes/returns.routes.js';
 import expensesRoutes from './routes/expenses.routes.js';
 import reportsRoutes from './routes/reports.routes.js';
 import salesRoutes from './routes/sales.routes.js';
+import notificationsRoutes from './routes/notifications.routes.js';
+import hrRoutes from './routes/hr.routes.js';
 
 app.use('/api/roles', rolesRoutes);
 app.use('/api/users', usersRoutes);
@@ -44,9 +48,13 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/customers', customersRoutes);
 app.use('/api/orders', ordersRoutes);
+app.use('/api/couriers', courierRoutes);
+app.use('/api/returns', returnsRoutes);
 app.use('/api/expenses', expensesRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/sales', salesRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/hr', hrRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Backend is running!' });
@@ -62,11 +70,19 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Export app for Vercel serverless function
+import http from 'http';
+import { initSocket } from './utils/socket.js';
+
+// Export app for Vercel serverless function (Note: Socket.io might not work seamlessly on Vercel without special config)
 export default app;
 
 // Start server only when running directly (local development)
 const port = process.env.PORT || 5001;
-app.listen(port, () => {
+const server = http.createServer(app);
+
+// Initialize Socket.io
+initSocket(server);
+
+server.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });

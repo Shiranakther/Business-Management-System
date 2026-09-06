@@ -19,6 +19,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import axios from 'axios';
+import { API_BASE_URL } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 const employeeSchema = z.object({
   employeeId: z.string().max(20).optional(),
@@ -45,6 +48,10 @@ const employeeSchema = z.object({
   bankName: z.string().max(100).optional(),
   bankAccount: z.string().max(50).optional(),
   taxId: z.string().max(50).optional(),
+  annualLeaveBalance: z.coerce.number().min(0).default(14),
+  casualLeaveBalance: z.coerce.number().min(0).default(7),
+  medicalLeaveBalance: z.coerce.number().min(0).default(7),
+  shortLeaveBalance: z.coerce.number().min(0).default(4),
 });
 
 type EmployeeFormData = z.infer<typeof employeeSchema>;
@@ -52,11 +59,12 @@ type EmployeeFormData = z.infer<typeof employeeSchema>;
 interface AddEmployeeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 }
 
 const departments = ['Engineering', 'Sales', 'Marketing', 'Finance', 'HR', 'Operations', 'Support'];
 
-export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps) {
+export function AddEmployeeDialog({ open, onOpenChange, onSuccess }: AddEmployeeDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -75,12 +83,16 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
   const onSubmit = async (data: EmployeeFormData) => {
     setIsSubmitting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log('New employee:', data);
+      const { data: { session } } = await supabase.auth.getSession();
+      await axios.post(`${API_BASE_URL}/api/hr/employees`, data, {
+        headers: { Authorization: `Bearer ${session?.access_token}` }
+      });
       toast.success('Employee added successfully!');
       reset();
       onOpenChange(false);
+      if (onSuccess) onSuccess();
     } catch (error) {
+      console.error('Failed to add employee:', error);
       toast.error('Failed to add employee');
     } finally {
       setIsSubmitting(false);
@@ -100,7 +112,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="employeeId">Employee ID</Label>
-                <Input id="employeeId" {...register('employeeId')} placeholder="e.g., EMP-001" />
+                <Input id="employeeId" {...register('employeeId')} placeholder="(Auto-generated if left blank)" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name *</Label>
@@ -236,7 +248,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                 {errors.hireDate && <p className="text-sm text-destructive">{errors.hireDate.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="salary">Annual Salary ($)</Label>
+                <Label htmlFor="salary">Monthly Salary (LKR)</Label>
                 <Input id="salary" type="number" {...register('salary')} placeholder="0" />
               </div>
             </div>
@@ -257,6 +269,29 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
               <div className="space-y-2">
                 <Label htmlFor="taxId">Tax ID</Label>
                 <Input id="taxId" {...register('taxId')} placeholder="SSN or Tax ID" />
+              </div>
+            </div>
+          </div>
+
+          {/* Leave Entitlements */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-muted-foreground">Leave Entitlements</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Annual Leave</Label>
+                <Input type="number" defaultValue={14} {...register('annualLeaveBalance')} />
+              </div>
+              <div className="space-y-2">
+                <Label>Casual Leave</Label>
+                <Input type="number" defaultValue={7} {...register('casualLeaveBalance')} />
+              </div>
+              <div className="space-y-2">
+                <Label>Medical Leave</Label>
+                <Input type="number" defaultValue={7} {...register('medicalLeaveBalance')} />
+              </div>
+              <div className="space-y-2">
+                <Label>Short Leave</Label>
+                <Input type="number" defaultValue={4} {...register('shortLeaveBalance')} />
               </div>
             </div>
           </div>

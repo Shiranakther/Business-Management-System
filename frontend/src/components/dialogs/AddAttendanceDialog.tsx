@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,7 +19,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { employees } from '@/data/mockData';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import axios from 'axios';
+import { API_BASE_URL } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
+
+const getHeaders = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return { Authorization: `Bearer ${session?.access_token}` };
+};
 
 const attendanceSchema = z.object({
   employeeId: z.string().min(1, 'Employee is required'),
@@ -35,10 +46,13 @@ type AttendanceFormData = z.infer<typeof attendanceSchema>;
 interface AddAttendanceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 }
 
-export function AddAttendanceDialog({ open, onOpenChange }: AddAttendanceDialogProps) {
+export function AddAttendanceDialog({ open, onOpenChange, onSuccess }: AddAttendanceDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [openCombobox, setOpenCombobox] = useState(false);
 
   const {
     register,
@@ -56,17 +70,52 @@ export function AddAttendanceDialog({ open, onOpenChange }: AddAttendanceDialogP
   });
 
   const status = watch('status');
+  const employeeId = watch('employeeId');
+
+  useEffect(() => {
+    if (open) {
+      fetchEmployees();
+      reset();
+      setValue('status', 'PRESENT');
+      setValue('date', new Date().toISOString().split('T')[0]);
+    }
+  }, [open, reset, setValue]);
+
+  const fetchEmployees = async () => {
+    try {
+      const headers = await getHeaders();
+      const res = await axios.get(`${API_BASE_URL}/api/hr/employees`, { headers });
+      setEmployees(res.data);
+    } catch (error) {
+      toast.error('Failed to load employees');
+    }
+  };
 
   const onSubmit = async (data: AttendanceFormData) => {
     setIsSubmitting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log('New attendance record:', data);
+      const headers = await getHeaders();
+      const payload: any = {
+        employeeId: data.employeeId,
+        date: data.date,
+        status: data.status,
+        hoursWorked: data.hoursWorked || null,
+      };
+      // Combine date + time into full ISO timestamps for TIMESTAMPTZ columns
+      if (data.checkIn) {
+        payload.checkIn = `${data.date}T${data.checkIn}:00`;
+      }
+      if (data.checkOut) {
+        payload.checkOut = `${data.date}T${data.checkOut}:00`;
+      }
+      await axios.post(`${API_BASE_URL}/api/hr/attendance`, payload, { headers });
       toast.success('Attendance recorded successfully!');
       reset();
       onOpenChange(false);
-    } catch (error) {
-      toast.error('Failed to record attendance');
+      onSuccess?.();
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || 'Failed to record attendance';
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -74,25 +123,56 @@ export function AddAttendanceDialog({ open, onOpenChange }: AddAttendanceDialogP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] overflow-visible">
         <DialogHeader>
           <DialogTitle>Record Attendance</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
+          <div className="space-y-2 flex flex-col">
             <Label htmlFor="employee">Employee</Label>
-            <Select onValueChange={(value) => setValue('employeeId', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select employee" />
-              </SelectTrigger>
-              <SelectContent>
-                {employees.map((emp) => (
-                  <SelectItem key={emp.id} value={emp.id}>
-                    {emp.firstName} {emp.lastName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openCombobox}
+                  className="w-full justify-between"
+                >
+                  {employeeId
+                    ? employees.find((emp) => emp.id === employeeId)?.firstName + ' ' + employees.find((emp) => emp.id === employeeId)?.lastName
+                    : "Select employee..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[460px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search employee..." />
+                  <CommandList>
+                    <CommandEmpty>No employee found.</CommandEmpty>
+                    <CommandGroup>
+                      {employees.map((emp) => (
+                        <CommandItem
+                          key={emp.id}
+                          value={`${emp.firstName} ${emp.lastName}`}
+                          onSelect={() => {
+                            setValue('employeeId', emp.id);
+                            setOpenCombobox(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              employeeId === emp.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {emp.firstName} {emp.lastName}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             {errors.employeeId && <p className="text-sm text-destructive">{errors.employeeId.message}</p>}
           </div>
 

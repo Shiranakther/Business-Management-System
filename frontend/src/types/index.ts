@@ -74,6 +74,10 @@ export interface Employee {
   performanceRating?: number;
   status: 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED';
   avatar?: string;
+  annualLeaveBalance?: number;
+  casualLeaveBalance?: number;
+  medicalLeaveBalance?: number;
+  shortLeaveBalance?: number;
 }
 
 export interface InventoryItem {
@@ -188,8 +192,13 @@ export interface Order {
   subtotal: number;
   tax: number;
   total: number;
-  status: 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'RETURN_REQUESTED' | 'RETURN_APPROVED' | 'RETURNED';
   paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED';
+  orderSource?: string;
+  courierPartnerId?: string;
+  courierPartnerName?: string;
+  trackingNumber?: string;
+  trackingUrlTemplate?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -201,6 +210,31 @@ export interface OrderItem {
   quantity: number;
   unitPrice: number;
   total: number;
+}
+
+export interface CourierPartner {
+  id: string;
+  name: string;
+  contactNumber: string;
+  email?: string;
+  trackingUrlTemplate?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface OrderReturn {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  returnNumber: string;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
+  refundAmount: number;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Supplier {
