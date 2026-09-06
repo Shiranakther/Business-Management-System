@@ -1,4 +1,3 @@
-import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clock, Timer } from 'lucide-react';
 import { AttendancePanel } from './AttendancePanel';

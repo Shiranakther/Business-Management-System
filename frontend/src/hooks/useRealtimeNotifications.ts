@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { io, type Socket } from 'socket.io-client';
 import { useAppStore } from '@/stores/appStore';
-import { useNotificationStore, Notification } from '@/stores/notificationStore';
+import { useNotificationStore, type Notification } from '@/stores/notificationStore';
 import { API_BASE_URL } from '@/lib/api';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
